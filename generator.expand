@@ -9,6 +9,18 @@ end
 local BuyExpandGroup = Tabs.Main:AddLeftGroupbox("Buy Feeders & Expand", "boxes")
 
 getgenv().UltimateAutoCoop = false
+getgenv().BuyGeneratorDelay = 3 -- Default delay
+
+-- Dropdown para sa Delay Config
+BuyExpandGroup:AddDropdown("BuyGeneratorDelayDropdown", {
+    Values = { "0.5s", "1s", "2s", "3s", "5s" },
+    Default = "3s",
+    Text = "Delay to Buy Generator",
+    Callback = function(Value)
+        local numStr = Value:gsub("s", "")
+        getgenv().BuyGeneratorDelay = tonumber(numStr) or 3
+    end
+})
 
 BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
     Text = "Auto Buy Feeders & Expand",
@@ -118,7 +130,8 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                             BuyEvent:InvokeServer(targetSlot)
                         end)
                         
-                        task.wait(3)
+                        -- Dito na ginagamit ang value mula sa dropdown delay config
+                        task.wait(getgenv().BuyGeneratorDelay or 3)
                     end)
                     
                     if not success then 
@@ -131,6 +144,51 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
         end
     end
 })
+
+-- ==================== COOPMAIN TAB: UPGRADES ====================
+local CoopConfigGroup = Tabs.CoopMain:AddLeftGroupbox("Coop Config", "boxes")
+
+getgenv().AutoUpgradeFeeder = false
+CoopConfigGroup:AddToggle("AutoUpgradeFeederToggle", {
+    Text = "Auto Upgrade Feeders (Smart Wait Money)",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoUpgradeFeeder = Value
+        if Value then
+            task.spawn(function()
+                local UpgradeEvent = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UpgradeGenerator")
+                while getgenv().AutoUpgradeFeeder do
+                    for feederId = 1, 6 do
+                        if not getgenv().AutoUpgradeFeeder then break end
+                        pcall(function() UpgradeEvent:InvokeServer(feederId) end)
+                        task.wait(0.05)
+                    end
+                    task.wait(0.3)
+                end
+            end)
+        end
+    end
+})
+
+getgenv().AutoUpgradeRecycler = false
+CoopConfigGroup:AddToggle("AutoUpgradeRecyclerToggle", {
+    Text = "Auto Upgrade Recycler (Smart Wait Money)",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoUpgradeRecycler = Value
+        if Value then
+            task.spawn(function()
+                local RecyclerEvent = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UpgradeRecycler")
+                while getgenv().AutoUpgradeRecycler do
+                    pcall(function() RecyclerEvent:InvokeServer() end)
+                    task.wait(0.5)
+                end
+            end)
+        end
+    end
+})
+
+
 
 -- ==================== COOPMAIN TAB: UPGRADES ====================
 local CoopConfigGroup = Tabs.CoopMain:AddLeftGroupbox("Coop Config", "boxes")

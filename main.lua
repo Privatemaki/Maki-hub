@@ -4,7 +4,7 @@ local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))
 local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
 local Window = Library:CreateWindow({
-    Title = "MakiHub - Roblox Script",
+    Title = "MakiHub",
     Footer = "Obsidian UI",
     Icon = 95816097006870,
     NotifySide = "Right",
@@ -40,4 +40,7 @@ SaveManager:SetFolder("MakiHubConfigs")
 SaveManager:BuildConfigSection(Tabs["UI Settings"])
 ThemeManager:ApplyToTab(Tabs["UI Settings"])
 
-Library:Notify("Tagumpay na na-load ang MakiHub Main!", 5)
+-- Dito ko idinagdag para mag-auto load yung config na sinet mo
+SaveManager:LoadAutoloadConfig()
+
+Library:Notify("Welcome!", 5)

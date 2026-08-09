@@ -4,9 +4,9 @@ local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))
 local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
 local Window = Library:CreateWindow({
-    Title = "MakiHub",
+    Title = "𝙼𝙰𝙺𝙸 𝙷𝚄𝙱",
     Footer = "Obsidian UI",
-    Icon = 95816097006870,
+    Icon = "shield",
     NotifySide = "Right",
     ShowCustomCursor = true,
 })
@@ -50,4 +50,4 @@ pcall(function() loadstring(game:HttpGet(moduleRepo .. "farming.lua"))() end)
 -- ==================== SAKA IA-APPLY ANG CONFIG ====================
 SaveManager:LoadAutoloadConfig()
 
-Library:Notify("Welcome!", 5)
+Library:Notify("Welcome! Tagumpay na na-load ang MakiHub.", 5)

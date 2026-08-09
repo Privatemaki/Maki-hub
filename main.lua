@@ -40,7 +40,14 @@ SaveManager:SetFolder("MakiHubConfigs")
 SaveManager:BuildConfigSection(Tabs["UI Settings"])
 ThemeManager:ApplyToTab(Tabs["UI Settings"])
 
--- Dito ko idinagdag para mag-auto load yung config na sinet mo
+-- ==================== LOAD MODULE FILES MUNA ====================
+local moduleRepo = "https://raw.githubusercontent.com/Privatemaki/Maki-hub/refs/heads/main/"
+
+pcall(function() loadstring(game:HttpGet(moduleRepo .. "hatch.lua"))() end)
+pcall(function() loadstring(game:HttpGet(moduleRepo .. "generator.expand"))() end)
+pcall(function() loadstring(game:HttpGet(moduleRepo .. "farming.lua"))() end)
+
+-- ==================== SAKA IA-APPLY ANG CONFIG ====================
 SaveManager:LoadAutoloadConfig()
 
 Library:Notify("Welcome!", 5)

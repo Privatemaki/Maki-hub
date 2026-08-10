@@ -146,47 +146,45 @@ local BuyExpandGroup = Tabs.Main:AddLeftGroupbox("Buy Feeders & Expand", "boxes"
 
 getgenv().UltimateAutoCoop = false
 getgenv().BuyGeneratorDelay = 3
-getgenv().AutoUpgradeFeederTarget = 20
-getgenv().UpgradeGenerator = false
+getgenv().AutoUpgradeFeederTarget = 27
+getgenv().AutoUpgradeToggleState = false
 
-BuyExpandGroup:AddToggle("UpgradeGeneratorToggle", {
-    Text = "Upgrade Generator",
+BuyExpandGroup:AddToggle("AutoUpgradeToggle", {
+    Text = "Auto Upgrade",
     Default = false,
     Callback = function(Value)
-        getgenv().UpgradeGenerator = Value
+        getgenv().AutoUpgradeToggleState = Value
         if Value then
             task.spawn(function()
                 local ReplicatedStorage = game:GetService("ReplicatedStorage")
                 local UpgradeGeneratorRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UpgradeGenerator")
 
-                while getgenv().UpgradeGenerator do
-                    pcall(function()
-                        local coopsFolder = workspace:FindFirstChild("Coops")
-                        if coopsFolder then
-                            local myCoopUI = coopsFolder:FindFirstChild("CoopUI")
-                            if myCoopUI then
-                                local TARGET_LEVEL = getgenv().AutoUpgradeFeederTarget or 20
-                                local children = myCoopUI:GetChildren()
-                                local index = 1
+                while getgenv().AutoUpgradeToggleState do
+                    local coopsFolder = workspace:FindFirstChild("Coops")
+                    if coopsFolder then
+                        local myCoopUI = coopsFolder:FindFirstChild("CoopUI")
+                        if myCoopUI then
+                            local children = myCoopUI:GetChildren()
+                            local index = 1
+                            local TARGET_LEVEL = getgenv().AutoUpgradeFeederTarget or 27
+                            
+                            for _, child in ipairs(children) do
+                                if not getgenv().AutoUpgradeToggleState then break end
+                                local currentLevel = child:GetAttribute("Level")
                                 
-                                for _, child in ipairs(children) do
-                                    local currentLevel = child:GetAttribute("Level")
-                                    
-                                    if currentLevel then
-                                        if currentLevel < TARGET_LEVEL then
-                                            pcall(function()
-                                                return UpgradeGeneratorRemote:InvokeServer(index)
-                                            end)
-                                            task.wait(0.5)
-                                            break 
-                                        end
-                                        index = index + 1
+                                if currentLevel then
+                                    if currentLevel < TARGET_LEVEL then
+                                        pcall(function()
+                                            UpgradeGeneratorRemote:InvokeServer(index)
+                                        end)
+                                        task.wait(0.5)
+                                        break 
                                     end
+                                    index = index + 1
                                 end
                             end
                         end
-                    end)
-                    
+                    end
                     task.wait(0.7)
                 end
             end)
@@ -195,10 +193,9 @@ BuyExpandGroup:AddToggle("UpgradeGeneratorToggle", {
 })
 
 BuyExpandGroup:AddDropdown("AutoUpgradeTargetDropdown", {
-    Values = { "10", "15", "20", "25", "30", "40", "50" },
-    Default = "20",
-    Text = "Feeder Upgrade Target Level",
-    AllowNull = true,
+    Values = { "10", "15", "20", "25", "27", "30", "40", "50" },
+    Default = "27",
+    Text = "Feeder Target Level",
     Callback = function(Value)
         local num = tonumber(Value)
         if num then

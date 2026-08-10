@@ -16,7 +16,6 @@ local Tabs = {
     ["UI Settings"] = Window:AddTab("UI Settings", "menu"),
 }
 
--- I-save ang Window at Tabs sa getgenv para magamit
 getgenv().MakiHubWindow = Window
 getgenv().MakiHubTabs = Tabs
 
@@ -150,9 +149,8 @@ local BuyExpandGroup = Tabs.Main:AddLeftGroupbox("Buy Feeders & Expand", "boxes"
 
 getgenv().UltimateAutoCoop = false
 getgenv().BuyGeneratorDelay = 3
-getgenv().AutoUpgradeFeederTarget = 20 -- Default target level
+getgenv().AutoUpgradeFeederTarget = 20
 
--- Dropdown para sa Target Level ng Feeders (Pwedeng pumili o mag-type)
 BuyExpandGroup:AddDropdown("AutoUpgradeTargetDropdown", {
     Values = { "10", "15", "20", "25", "30", "40", "50" },
     Default = "20",
@@ -189,7 +187,7 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                 
                 local BuyEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuyGenerator")
                 local ExpandEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ExpandCoop")
-                local UpgradeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UpgradeGenerator")
+                local UpgradeGeneratorRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UpgradeGenerator")
 
                 while getgenv().UltimateAutoCoop do
                     local success, err = pcall(function()
@@ -197,23 +195,31 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                         local coopsFolder = workspace:FindFirstChild("Coops")
                         
                         if coopsFolder then
-                            local coopUI = coopsFolder:FindFirstChild("CoopUI")
-                            if coopUI then
-                                -- 1. AUTO UPGRADE MUNA NG MGA FEEDERS HANGGANG SA TARGET LEVEL
-                                local targetLevel = getgenv().AutoUpgradeFeederTarget or 20
-                                local children = coopUI:GetChildren()
-                                
-                                for index, child in ipairs(children) do
+                            local myCoopUI = coopsFolder:FindFirstChild("CoopUI")
+                            if myCoopUI then
+                                -- Eksaktong logic mula sa script mo para i-check ang target level at exact index
+                                local TARGET_LEVEL = getgenv().AutoUpgradeFeederTarget or 20
+                                for _, child in ipairs(myCoopUI:GetChildren()) do
                                     local currentLevel = child:GetAttribute("Level")
-                                    if currentLevel and currentLevel < targetLevel then
+                                    if currentLevel and currentLevel < TARGET_LEVEL then
                                         pcall(function()
-                                            UpgradeEvent:InvokeServer(index)
+                                            local allChildren = myCoopUI:GetChildren()
+                                            local exactIndex = 1
+                                            for i, c in ipairs(allChildren) do
+                                                if c == child then
+                                                    exactIndex = i
+                                                    break
+                                                end
+                                            end
+                                            UpgradeGeneratorRemote:InvokeServer(exactIndex)
                                         end)
+                                        task.wait(0.4)
+                                        break
                                     end
                                 end
 
-                                -- 2. CHECK COOP LEVEL PARA SA BUY & EXPAND LOGIC
-                                for _, child in ipairs(coopUI:GetChildren()) do
+                                -- Check Coop Level para sa Buy & Expand
+                                for _, child in ipairs(myCoopUI:GetChildren()) do
                                     local sGui = child:FindFirstChildOfClass("SurfaceGui")
                                     if sGui then
                                         for _, desc in ipairs(sGui:GetDescendants()) do
@@ -306,7 +312,6 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                         task.wait(2) 
                     end
                     
-                    -- Saktong 0.5 interval bago umikot ulit
                     task.wait(0.5)
                 end
             end)
@@ -417,11 +422,4 @@ task.spawn(function()
             end)
         end
     end
-end)
-
--- ==================== LOAD CONFIG INSTANTLY ====================
-task.spawn(function()
-    local success, err = pcall(function()
-        SaveManager:LoadAutoloadConfig()
-    end)
 end)

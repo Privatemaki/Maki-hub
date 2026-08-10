@@ -147,8 +147,6 @@ local BuyExpandGroup = Tabs.Main:AddLeftGroupbox("Buy Feeders & Expand", "boxes"
 getgenv().UltimateAutoCoop = false
 getgenv().BuyGeneratorDelay = 3
 getgenv().AutoUpgradeFeederTarget = 20
-
--- ==================== UPGRADE GENERATOR (SARILING TOGGLE) ====================
 getgenv().UpgradeGenerator = false
 
 BuyExpandGroup:AddToggle("UpgradeGeneratorToggle", {
@@ -162,7 +160,7 @@ BuyExpandGroup:AddToggle("UpgradeGeneratorToggle", {
                 local UpgradeGeneratorRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UpgradeGenerator")
 
                 while getgenv().UpgradeGenerator do
-                    local success = pcall(function()
+                    pcall(function()
                         local coopsFolder = workspace:FindFirstChild("Coops")
                         if coopsFolder then
                             local myCoopUI = coopsFolder:FindFirstChild("CoopUI")

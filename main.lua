@@ -19,7 +19,6 @@ local Tabs = {
 getgenv().MakiHubWindow = Window
 getgenv().MakiHubTabs = Tabs
 
--- ==================== UI SETTINGS & THEMES ====================
 local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "boxes")
 MenuGroup:AddButton("Unload", function() Library:Unload() end)
 MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "End", NoUI = true, Text = "Menu keybind" })
@@ -38,7 +37,6 @@ SaveManager:SetFolder("MakiHubConfigs")
 SaveManager:BuildConfigSection(Tabs["UI Settings"])
 ThemeManager:ApplyToTab(Tabs["UI Settings"])
 
--- ==================== HATCH CONFIG ====================
 local HatchGroup = Tabs.Main:AddLeftGroupbox("Hatch Config", "boxes")
 
 getgenv().AutoOpenAll = false
@@ -144,12 +142,59 @@ HatchGroup:AddToggle("AutoCollectEggsToggle", {
     end
 })
 
--- ==================== BUY FEEDERS & EXPAND ====================
 local BuyExpandGroup = Tabs.Main:AddLeftGroupbox("Buy Feeders & Expand", "boxes")
 
 getgenv().UltimateAutoCoop = false
 getgenv().BuyGeneratorDelay = 3
 getgenv().AutoUpgradeFeederTarget = 20
+
+-- ==================== UPGRADE GENERATOR (SARILING TOGGLE) ====================
+getgenv().UpgradeGenerator = false
+
+BuyExpandGroup:AddToggle("UpgradeGeneratorToggle", {
+    Text = "Upgrade Generator",
+    Default = false,
+    Callback = function(Value)
+        getgenv().UpgradeGenerator = Value
+        if Value then
+            task.spawn(function()
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                local UpgradeGeneratorRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UpgradeGenerator")
+
+                while getgenv().UpgradeGenerator do
+                    local success = pcall(function()
+                        local coopsFolder = workspace:FindFirstChild("Coops")
+                        if coopsFolder then
+                            local myCoopUI = coopsFolder:FindFirstChild("CoopUI")
+                            if myCoopUI then
+                                local TARGET_LEVEL = getgenv().AutoUpgradeFeederTarget or 20
+                                local children = myCoopUI:GetChildren()
+                                local index = 1
+                                
+                                for _, child in ipairs(children) do
+                                    local currentLevel = child:GetAttribute("Level")
+                                    
+                                    if currentLevel then
+                                        if currentLevel < TARGET_LEVEL then
+                                            pcall(function()
+                                                return UpgradeGeneratorRemote:InvokeServer(index)
+                                            end)
+                                            task.wait(0.5)
+                                            break 
+                                        end
+                                        index = index + 1
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                    
+                    task.wait(0.7)
+                end
+            end)
+        end
+    end
+})
 
 BuyExpandGroup:AddDropdown("AutoUpgradeTargetDropdown", {
     Values = { "10", "15", "20", "25", "30", "40", "50" },
@@ -187,7 +232,6 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                 
                 local BuyEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuyGenerator")
                 local ExpandEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ExpandCoop")
-                local UpgradeGeneratorRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UpgradeGenerator")
 
                 while getgenv().UltimateAutoCoop do
                     local success, err = pcall(function()
@@ -197,28 +241,6 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                         if coopsFolder then
                             local myCoopUI = coopsFolder:FindFirstChild("CoopUI")
                             if myCoopUI then
-                                -- Eksaktong logic mula sa script mo para i-check ang target level at exact index
-                                local TARGET_LEVEL = getgenv().AutoUpgradeFeederTarget or 20
-                                for _, child in ipairs(myCoopUI:GetChildren()) do
-                                    local currentLevel = child:GetAttribute("Level")
-                                    if currentLevel and currentLevel < TARGET_LEVEL then
-                                        pcall(function()
-                                            local allChildren = myCoopUI:GetChildren()
-                                            local exactIndex = 1
-                                            for i, c in ipairs(allChildren) do
-                                                if c == child then
-                                                    exactIndex = i
-                                                    break
-                                                end
-                                            end
-                                            UpgradeGeneratorRemote:InvokeServer(exactIndex)
-                                        end)
-                                        task.wait(0.4)
-                                        break
-                                    end
-                                end
-
-                                -- Check Coop Level para sa Buy & Expand
                                 for _, child in ipairs(myCoopUI:GetChildren()) do
                                     local sGui = child:FindFirstChildOfClass("SurfaceGui")
                                     if sGui then
@@ -319,7 +341,6 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
     end
 })
 
--- ==================== FARMING CONFIG ====================
 local FarmingConfigGroup = Tabs.Main:AddRightGroupbox("Farming Config", "boxes")
 
 getgenv().AutoProgression = false
@@ -403,7 +424,6 @@ FarmingConfigGroup:AddToggle("AutoProgressionToggle", {
     end
 })
 
--- ==================== AUTO CLOSE TOWER CONTINUE ====================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local remotesFolder = ReplicatedStorage:WaitForChild("Remotes", 5)
@@ -422,4 +442,10 @@ task.spawn(function()
             end)
         end
     end
+end)
+
+task.spawn(function()
+    local success, err = pcall(function()
+        SaveManager:LoadAutoloadConfig()
+    end)
 end)

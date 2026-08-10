@@ -368,6 +368,28 @@ FarmingConfigGroup:AddToggle("AutoProgressionToggle", {
     end
 })
 
+-- ==================== AUTO CLOSE TOWER CONTINUE ====================
+task.spawn(function()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local remotesFolder = ReplicatedStorage:WaitForChild("Remotes", 5)
+    if remotesFolder then
+        local continueOffer = remotesFolder:FindFirstChild("TowerContinueOffer")
+        local continueDecline = remotesFolder:FindFirstChild("TowerContinueDecline")
+        
+        if continueOffer and continueDecline then
+            continueOffer.OnClientEvent:Connect(function()
+                -- Kusang magse-send ng decline kapag naka-on ang Auto Progression mo
+                if getgenv().AutoProgression then
+                    task.wait(0.1)
+                    pcall(function()
+                        continueDecline:FireServer()
+                    end)
+                end
+            end)
+        end
+    end
+end)
+
 -- ==================== COOP CONFIG ====================
 local CoopConfigGroup = Tabs.CoopMain:AddLeftGroupbox("Coop Config", "boxes")
 

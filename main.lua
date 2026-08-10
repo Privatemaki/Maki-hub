@@ -13,7 +13,6 @@ local Window = Library:CreateWindow({
 
 local Tabs = {
     Main = Window:AddTab("Main", "home"),
-    CoopMain = Window:AddTab("CoopMain", "settings"),
     ["UI Settings"] = Window:AddTab("UI Settings", "menu"),
 }
 
@@ -151,6 +150,21 @@ local BuyExpandGroup = Tabs.Main:AddLeftGroupbox("Buy Feeders & Expand", "boxes"
 
 getgenv().UltimateAutoCoop = false
 getgenv().BuyGeneratorDelay = 3
+getgenv().AutoUpgradeFeederTarget = 20 -- Default target level
+
+-- Dropdown para sa Target Level ng Feeders (Pwedeng pumili o mag-type)
+BuyExpandGroup:AddDropdown("AutoUpgradeTargetDropdown", {
+    Values = { "10", "15", "20", "25", "30", "40", "50" },
+    Default = "20",
+    Text = "Feeder Upgrade Target Level",
+    AllowNull = true,
+    Callback = function(Value)
+        local num = tonumber(Value)
+        if num then
+            getgenv().AutoUpgradeFeederTarget = num
+        end
+    end
+})
 
 BuyExpandGroup:AddDropdown("BuyGeneratorDelayDropdown", {
     Values = { "0.5s", "1s", "2s", "3s", "5s" },
@@ -175,6 +189,7 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                 
                 local BuyEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuyGenerator")
                 local ExpandEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ExpandCoop")
+                local UpgradeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UpgradeGenerator")
 
                 while getgenv().UltimateAutoCoop do
                     local success, err = pcall(function()
@@ -184,6 +199,20 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                         if coopsFolder then
                             local coopUI = coopsFolder:FindFirstChild("CoopUI")
                             if coopUI then
+                                -- 1. AUTO UPGRADE MUNA NG MGA FEEDERS HANGGANG SA TARGET LEVEL
+                                local targetLevel = getgenv().AutoUpgradeFeederTarget or 20
+                                local children = coopUI:GetChildren()
+                                
+                                for index, child in ipairs(children) do
+                                    local currentLevel = child:GetAttribute("Level")
+                                    if currentLevel and currentLevel < targetLevel then
+                                        pcall(function()
+                                            UpgradeEvent:InvokeServer(index)
+                                        end)
+                                    end
+                                end
+
+                                -- 2. CHECK COOP LEVEL PARA SA BUY & EXPAND LOGIC
                                 for _, child in ipairs(coopUI:GetChildren()) do
                                     local sGui = child:FindFirstChildOfClass("SurfaceGui")
                                     if sGui then
@@ -277,7 +306,8 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                         task.wait(2) 
                     end
                     
-                    task.wait(1)
+                    -- Saktong 0.5 interval bago umikot ulit
+                    task.wait(0.5)
                 end
             end)
         end
@@ -378,7 +408,6 @@ task.spawn(function()
         
         if continueOffer and continueDecline then
             continueOffer.OnClientEvent:Connect(function()
-                -- Kusang magse-send ng decline kapag naka-on ang Auto Progression mo
                 if getgenv().AutoProgression then
                     task.wait(0.1)
                     pcall(function()
@@ -390,58 +419,9 @@ task.spawn(function()
     end
 end)
 
--- ==================== COOP CONFIG ====================
-local CoopConfigGroup = Tabs.CoopMain:AddLeftGroupbox("Coop Config", "boxes")
-
-getgenv().AutoUpgradeFeeder = false
-CoopConfigGroup:AddToggle("AutoUpgradeFeederToggle", {
-    Text = "Auto Upgrade Feeders (Smart Wait Money)",
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoUpgradeFeeder = Value
-        if Value then
-            task.spawn(function()
-                local UpgradeEvent = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UpgradeGenerator")
-                while getgenv().AutoUpgradeFeeder do
-                    for feederId = 1, 6 do
-                        if not getgenv().AutoUpgradeFeeder then break end
-                        pcall(function() UpgradeEvent:InvokeServer(feederId) end)
-                        task.wait(0.05)
-                    end
-                    task.wait(0.3)
-                end
-            end)
-        end
-    end
-})
-
-getgenv().AutoUpgradeRecycler = false
-CoopConfigGroup:AddToggle("AutoUpgradeRecyclerToggle", {
-    Text = "Auto Upgrade Recycler (Smart Wait Money)",
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoUpgradeRecycler = Value
-        if Value then
-            task.spawn(function()
-                local RecyclerEvent = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UpgradeRecycler")
-                while getgenv().AutoUpgradeRecycler do
-                    pcall(function() RecyclerEvent:InvokeServer() end)
-                    task.wait(0.5)
-                end
-            end)
-        end
-    end
-})
-
 -- ==================== LOAD CONFIG INSTANTLY ====================
 task.spawn(function()
     local success, err = pcall(function()
         SaveManager:LoadAutoloadConfig()
     end)
-    
-    if success then
-        Library:Notify("Successfully loaded autoload config!", 5)
-    else
-        Library:Notify("Failed to load config: " .. tostring(err), 5)
-    end
 end)

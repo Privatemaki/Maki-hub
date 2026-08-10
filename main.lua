@@ -284,6 +284,162 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
     end
 })
 
+-- ==================== upgrade & smart  ====================
+local BuyExpandGroup = Tabs.Main:AddLeftGroupbox("Buy Feeders & Expand", "boxes")
+
+getgenv().UltimateAutoCoop = false
+getgenv().BuyGeneratorDelay = 3
+getgenv().AutoUpgradeFeederTarget = 20 -- Default target level
+
+-- Dito ang Dropdown para sa Target Level ng Auto Upgrade Feeders
+BuyExpandGroup:AddDropdown("AutoUpgradeTargetDropdown", {
+    Values = { "10", "15", "20", "25", "30", "40", "50" },
+    Default = "20",
+    Text = "Feeder Upgrade Target Level",
+    Callback = function(Value)
+        getgenv().AutoUpgradeFeederTarget = tonumber(Value) or 20
+    end
+})
+
+BuyExpandGroup:AddDropdown("BuyGeneratorDelayDropdown", {
+    Values = { "0.5s", "1s", "2s", "3s", "5s" },
+    Default = "3s",
+    Text = "Delay to Buy Generator",
+    Callback = function(Value)
+        local numStr = Value:gsub("s", "")
+        getgenv().BuyGeneratorDelay = tonumber(numStr) or 3
+    end
+})
+
+BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
+    Text = "Auto Buy Feeders & Expand",
+    Default = false,
+    Callback = function(Value)
+        getgenv().UltimateAutoCoop = Value
+        if Value then
+            task.spawn(function()
+                local Players = game:GetService("Players")
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                local LocalPlayer = Players.LocalPlayer
+                local BuyEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuyGenerator")
+                local ExpandEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ExpandCoop")
+                local UpgradeEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UpgradeGenerator")
+
+                while getgenv().UltimateAutoCoop do
+                    local success, err = pcall(function()
+                        local coopLevel = 1
+                        local coopsFolder = workspace:FindFirstChild("Coops")
+                        if coopsFolder then
+                            local coopUI = coopsFolder:FindFirstChild("CoopUI")
+                            if coopUI then
+                                -- 1. AUTO UPGRADE MUNA HANGGANG SA TARGET LEVEL NA PINILI MO SA UI
+                                local targetLevel = getgenv().AutoUpgradeFeederTarget or 20
+                                local children = coopUI:GetChildren()
+                                
+                                for index, child in ipairs(children) do
+                                    local currentLevel = child:GetAttribute("Level")
+                                    if currentLevel and currentLevel < targetLevel then
+                                        pcall(function()
+                                            UpgradeEvent:InvokeServer(index)
+                                        end)
+                                        task.wait(0.05)
+                                    end
+                                end
+
+                                -- 2. CHECK COOP LEVEL PARA SA BUY & EXPAND LOGIC
+                                for _, child in ipairs(coopUI:GetChildren()) do
+                                    local sGui = child:FindFirstChildOfClass("SurfaceGui")
+                                    if sGui then
+                                        for _, desc in ipairs(sGui:GetDescendants()) do
+                                            if desc:IsA("TextLabel") then
+                                                local txt = desc.Text or ""
+                                                if txt:match("Nv%.(%d+)") then
+                                                    local lvl = tonumber(txt:match("Nv%.(%d+)"))
+                                                    if lvl and lvl >= 1 and lvl <= 5 then
+                                                        coopLevel = lvl
+                                                        break
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
+                                    if coopLevel > 1 then break end
+                                end
+                            end
+                        end
+
+                        local maxAllowed = coopLevel + 1
+                        if maxAllowed > 6 then maxAllowed = 6 end
+                        
+                        local currentFeederCount = 0
+                        if coopsFolder and coopsFolder:FindFirstChild("CoopUI") then
+                            for _, child in ipairs(coopsFolder.CoopUI:GetChildren()) do
+                                if child.Name == "Feeder" then
+                                    currentFeederCount = currentFeederCount + 1
+                                end
+                            end
+                        end
+
+                        if currentFeederCount >= maxAllowed then
+                            if coopLevel >= 5 then
+                                task.wait(5)
+                                return
+                            end
+                            pcall(function()
+                                ExpandEvent:InvokeServer()
+                            end)
+                            task.wait(4)
+                            return
+                        end
+
+                        local playerMoney = 0
+                        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+                        if playerGui then
+                            local hud = playerGui:FindFirstChild("HUD")
+                            local moneyFolder = hud and hud:FindFirstChild("Frame") and hud.Frame:FindFirstChild("money")
+                            if moneyFolder then
+                                local qFolder = moneyFolder:FindFirstChild("q")
+                                local numLabel = qFolder and qFolder:FindFirstChild("num")
+                                if numLabel and numLabel:IsA("TextLabel") then
+                                    local rawText = numLabel.Text:upper():gsub(",", "")
+                                    local multiplier = 1
+                                    if rawText:find("K") then
+                                        multiplier = 1000
+                                        rawText = rawText:gsub("K", "")
+                                    elseif rawText:find("M") then
+                                        multiplier = 1000000
+                                        rawText = rawText:gsub("M", "")
+                                    elseif rawText:find("B") then
+                                        multiplier = 1000000000
+                                        rawText = rawText:gsub("B", "")
+                                    end
+                                    playerMoney = (tonumber(rawText) or 0) * multiplier
+                                end
+                            end
+                        end
+
+                        if playerMoney < 1500 then
+                            task.wait(3)
+                            return
+                        end
+
+                        local targetSlot = currentFeederCount + 1
+                        pcall(function()
+                            BuyEvent:InvokeServer(targetSlot)
+                        end)
+                        task.wait(getgenv().BuyGeneratorDelay or 3)
+                    end)
+
+                    if not success then
+                        task.wait(2)
+                    end
+                    task.wait(1)
+                end
+            end)
+        end
+    end
+})
+
 -- ==================== FARMING CONFIG ====================
 local FarmingConfigGroup = Tabs.Main:AddRightGroupbox("Farming Config", "boxes")
 

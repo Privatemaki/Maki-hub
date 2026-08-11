@@ -336,7 +336,12 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
     end
 })
 
-local FarmingConfigGroup = Tabs.Main:AddRightGroupbox("Farming Config", "boxes")
+-- ===================================================
+-- SMART progression UI CONTROLS FOR MAKI-HUB
+-- ===================================================
+
+local StatusLabel = FarmingConfigGroup:AddLabel("Status: Idle")
+local FloorLabel = FarmingConfigGroup:AddLabel("Floor Info: 0 / 0")
 
 getgenv().AutoProgression = false
 getgenv().TowerDelay = 15
@@ -355,7 +360,7 @@ FarmingConfigGroup:AddInput("TowerDelayInput", {
 })
 
 FarmingConfigGroup:AddToggle("AutoProgressionToggle", {
-    Text = "Auto Progression (Tower & Rebirth)",
+    Text = "Enable Progression Flow",
     Default = false,
     Callback = function(Value)
         getgenv().AutoProgression = Value
@@ -364,56 +369,133 @@ FarmingConfigGroup:AddToggle("AutoProgressionToggle", {
                 local ReplicatedStorage = game:GetService("ReplicatedStorage")
                 local Players = game:GetService("Players")
                 local LocalPlayer = Players.LocalPlayer
-                
                 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
-                local RebirthEvent = Remotes:WaitForChild("Rebirth")
-                local SurrenderEvent = Remotes:FindFirstChild("TowerSurrender") or Remotes:FindFirstChild("Surrender")
-                local TowerStartEvent = Remotes:WaitForChild("TowerStart")
-
+                
                 while getgenv().AutoProgression do
-                    pcall(function()
+                    local success, err = pcall(function()
                         local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
                         if not playerScripts then return end
                         
-                        local dataControllerPath = playerScripts:FindFirstChild("Core") and playerScripts.Core.Data:FindFirstChild("DataController")
-                        if not dataControllerPath then return end
-                        
-                        local DataController = require(dataControllerPath)
+                        local DataController = require(playerScripts.Core.Data.DataController)
                         local RebirthBonus = require(ReplicatedStorage.Core.Progression.RebirthBonus)
                         
-                        local rebirthData = DataController.rebirth
-                        if type(rebirthData) == "function" then rebirthData = rebirthData() end
-                        local currentRebirths = (type(rebirthData) == "table" and rebirthData.count) or 0
-                        if type(currentRebirths) == "function" then currentRebirths = currentRebirths() end
+                        -- Rebirth Count Check
+                        local currentRebirths = 0
+                        if DataController.rebirth then
+                            local res = DataController.rebirth()
+                            if type(res) == "table" then
+                                currentRebirths = res.count or 0
+                            else
+                                currentRebirths = tonumber(res) or 0
+                            end
+                        end
                         
                         local reqFloor = RebirthBonus.requirementFloor(currentRebirths)
                         
-                        local towerBest = DataController.towerBest
-                        if type(towerBest) == "function" then towerBest = towerBest() end
-                        towerBest = towerBest or 0
-                        
-                        local where = "corral"
-                        local chickenModePath = playerScripts:FindFirstChild("Features") and playerScripts.Features.Chicken:FindFirstChild("ChickenMode")
-                        if chickenModePath then
-                            local ChickenMode = require(chickenModePath)
-                            if ChickenMode.where then where = ChickenMode.where() end
+                        -- Tower Best Check
+                        local towerBest = 0
+                        if type(DataController.towerBest) == "function" then
+                            local successVal, resVal = pcall(DataController.towerBest)
+                            if successVal then
+                                towerBest = tonumber(resVal) or 0
+                            end
+                        elseif type(DataController.towerBest) == "number" then
+                            towerBest = DataController.towerBest
                         end
+                        
+                        -- Green Text Styling
+                        if towerBest >= reqFloor then
+                            FloorLabel:SetText("<font color=\"#00FF00\">Highest Floor: " .. tostring(towerBest) .. " / Req: " .. tostring(reqFloor) .. "</font>")
+                        else
+                            FloorLabel:SetText("Highest Floor: " .. tostring(towerBest) .. " / Req: " .. tostring(reqFloor))
+                        end
+                        
+                        -- Where check
+                        local where = "corral"
+                        pcall(function()
+                            if playerScripts:FindFirstChild("Features") and playerScripts.Features:FindFirstChild("Chicken") then
+                                local chickenMode = playerScripts.Features.Chicken:FindFirstChild("ChickenMode")
+                                if chickenMode and chickenMode:FindFirstChild("where") then
+                                    where = chickenMode.where()
+                                end
+                            end
+                        end)
                         
                         local isInTower = (where == "campaign" or where == "tower")
                         
-                        if towerBest < reqFloor and not isInTower then
-                            TowerStartEvent:InvokeServer()
-                            task.wait(getgenv().TowerDelay or 15)
-                        elseif isInTower and towerBest >= reqFloor then
-                            if SurrenderEvent then SurrenderEvent:InvokeServer() end
+                        -- FLOW LOGIC
+                        if towerBest < reqFloor then
+                            if not isInTower then
+                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Running Elevator (Floor " .. tostring(towerBest) .. ")</font>")
+                                
+                                local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
+                                if elevatorRemote then
+                                    pcall(function()
+                                        if elevatorRemote:IsA("RemoteFunction") then
+                                            elevatorRemote:InvokeServer(towerBest)
+                                        else
+                                            elevatorRemote:FireServer(towerBest)
+                                        end
+                                    end)
+                                end
+                                
+                                task.wait(0.5)
+                                
+                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Starting Tower Run...</font>")
+                                local startRemote = Remotes:FindFirstChild("TowerStart")
+                                if startRemote then
+                                    pcall(function()
+                                        startRemote:InvokeServer()
+                                    end)
+                                end
+                                
+                                task.wait(getgenv().TowerDelay or 15)
+                            else
+                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Playing inside tower...</font>")
+                            end
+                        else
+                            -- RETREAT METHOD
+                            StatusLabel:SetText("<font color=\"#00FF00\">Status: Retreating from Tower...</font>")
+                            
+                            pcall(function()
+                                local retreatRemote = Remotes:FindFirstChild("TowerSurrender") 
+                                                   or Remotes:FindFirstChild("Retreat") 
+                                                   or Remotes:FindFirstChild("TowerRetreat")
+                                if retreatRemote then
+                                    if retreatRemote:IsA("RemoteFunction") then
+                                        retreatRemote:InvokeServer()
+                                    else
+                                        retreatRemote:FireServer()
+                                    end
+                                end
+                            end)
+                            
                             task.wait(3)
-                        elseif not isInTower and towerBest >= reqFloor then
-                            RebirthEvent:InvokeServer()
-                            task.wait(5)
+                            
+                            -- REBIRTH EXECUTION
+                            StatusLabel:SetText("<font color=\"#00FF00\">Status: Executing Rebirth...</font>")
+                            local rebirthRemote = Remotes:FindFirstChild("Rebirth")
+                            if rebirthRemote then
+                                pcall(function()
+                                    if rebirthRemote:IsA("RemoteFunction") then
+                                        rebirthRemote:InvokeServer()
+                                    else
+                                        rebirthRemote:FireServer()
+                                    end
+                                end)
+                            end
+                            
+                            task.wait(4)
                         end
                     end)
-                    task.wait(3)
+                    
+                    if not success then
+                        warn("[Error]:", err)
+                    end
+                    
+                    task.wait(2)
                 end
+                StatusLabel:SetText("Status: Idle")
             end)
         end
     end

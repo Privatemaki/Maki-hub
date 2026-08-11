@@ -5,7 +5,7 @@ local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
 local Window = Library:CreateWindow({
     Title = "𝙼𝙰𝙺𝙸 𝙷𝚄𝙱",
-    Footer = "Maki Hub | Clean Edition",
+    Footer = "Maki Hub | Premium Edition",
     Icon = 6023426915,
     NotifySide = "Right",
     ShowCustomCursor = true,
@@ -41,24 +41,31 @@ SaveManager:BuildConfigSection(Tabs["UI Settings"])
 ThemeManager:ApplyToTab(Tabs["UI Settings"])
 
 -- ===================================================
--- 1ST TAB: INFO (DASHBOARD BOX)
+-- 1ST TAB: INFO (MALAKI AT MAGKABIYAK NA DASHBOARD)
 -- ===================================================
-local DashboardGroup = Tabs.Info:AddLeftGroupbox("📊 Live Progression Dashboard", "boxes")
+local InfoLeftBox = Tabs.Info:AddLeftGroupbox("📊 LIVE PROGRESSION STATUS", "activity")
+local InfoRightBox = Tabs.Info:AddRightGroupbox("ℹ️ HUB & PLAYER INFO", "user")
 
-DashboardGroup:AddLabel("<font color=\"#00FF88\"><b>=== MAIN STATUS ===</b></font>")
-local StatusLabel = DashboardGroup:AddLabel("<font color=\"#AAAAAA\">Current Status: Idle</font>")
-local FloorLabel = DashboardGroup:AddLabel("<font color=\"#AAAAAA\">Floor Info: Highest: 0 / Req: 0</font>")
+InfoLeftBox:AddLabel("<font color=\"#00FF88\"><b>=== CURRENT ACTIVITY ===</b></font>")
+local StatusLabel = InfoLeftBox:AddLabel("<font color=\"#FFFFFF\">Status: </font><font color=\"#AAAAAA\">Idle</font>")
+local FloorLabel = InfoLeftBox:AddLabel("<font color=\"#FFFFFF\">Floor Progress: </font><font color=\"#FF9900\">Highest: 0 / Req: 0</font>")
+InfoLeftBox:AddDivider()
+InfoLeftBox:AddLabel("<font color=\"#00E5FF\"><b>=== AUTOMATION FLOW ===</b></font>")
+InfoLeftBox:AddLabel("<font color=\"#AAAAAA\">• Auto Tower Elevator</font>")
+InfoLeftBox:AddLabel("<font color=\"#AAAAAA\">• Auto Tower Surrender & Rebirth</font>")
 
-DashboardGroup:AddDivider()
-DashboardGroup:AddLabel("<font color=\"#00E5FF\"><b>=== SCRIPT INFO ===</b></font>")
-DashboardGroup:AddLabel("Hub Name: <font color=\"#FFCC00\">Maki Hub</font>")
-DashboardGroup:AddLabel("Version: <font color=\"#00FF00\">v2.5 (Clean Edition)</font>")
-DashboardGroup:AddLabel("Status: <font color=\"#00FF00\">Undetected / Active</font>")
+InfoRightBox:AddLabel("<font color=\"#00E5FF\"><b>=== MAKI HUB DETAILS ===</b></font>")
+InfoRightBox:AddLabel("Script Name : <font color=\"#FFCC00\"><b>MAKI HUB</b></font>")
+InfoRightBox:AddLabel("Version     : <font color=\"#00FF00\">v3.0 Ultra Clean</font>")
+InfoRightBox:AddLabel("Status      : <font color=\"#00FF00\">Undetected / Active</font>")
+InfoRightBox:AddDivider()
+InfoRightBox:AddLabel("<font color=\"#FF9900\"><b>=== PLAYER STATS ===</b></font>")
+local PlayerNameLabel = InfoRightBox:AddLabel("Player : <font color=\"#FFFFFF\">" .. game:GetService("Players").LocalPlayer.DisplayName .. "</font>")
 
 -- ===================================================
 -- 2ND TAB: FARMING - LEFT COLUMN (MAIN TOGGLES)
 -- ===================================================
-local MainControlsGroup = Tabs.Farming:AddLeftGroupbox("🟢 Main Controls", "boxes")
+local MainControlsGroup = Tabs.Farming:AddLeftGroupbox("🟢 MAIN TOGGLES", "sliders")
 
 getgenv().AutoOpenAll = false
 getgenv().AutoCollectMyCoopOnly = false
@@ -318,28 +325,30 @@ MainControlsGroup:AddToggle("AutoUpgradeToggle", {
 })
 
 -- ===================================================
--- 2ND TAB: FARMING - RIGHT COLUMN (FINE CONFIGS)
+-- 2ND TAB: FARMING - RIGHT COLUMN (ISANG BUONG CONFIG BOX)
 -- ===================================================
-local HatchConfigGroup = Tabs.Farming:AddRightGroupbox("⚙️ Hatch Config", "boxes")
+local AllConfigsGroup = Tabs.Farming:AddRightGroupbox("⚙️ ALL CONFIGURATIONS", "settings")
+
 getgenv().EggSpawnDelay = 5
-HatchConfigGroup:AddInput("EggDelayInput", {
+getgenv().BuyGeneratorDelay = 3
+getgenv().AutoUpgradeFeederTarget = 27
+getgenv().TowerDelay = 15
+
+AllConfigsGroup:AddLabel("<font color=\"#00FF88\"><b>--- Hatch Settings ---</b></font>")
+AllConfigsGroup:AddInput("EggDelayInput", {
     Text = "Egg Collect Delay (s)",
     Default = "5",
     Numeric = true,
     Finished = true,
     Callback = function(Value)
         local num = tonumber(Value)
-        if num and num >= 0 then
-            getgenv().EggSpawnDelay = num
-        end
+        if num and num >= 0 then getgenv().EggSpawnDelay = num end
     end
 })
 
-local FeederConfigGroup = Tabs.Farming:AddRightGroupbox("⚙️ Feeder Config", "boxes")
-getgenv().BuyGeneratorDelay = 3
-getgenv().AutoUpgradeFeederTarget = 27
-
-FeederConfigGroup:AddDropdown("AutoUpgradeTargetDropdown", {
+AllConfigsGroup:AddDivider()
+AllConfigsGroup:AddLabel("<font color=\"#00E5FF\"><b>--- Feeder Settings ---</b></font>")
+AllConfigsGroup:AddDropdown("AutoUpgradeTargetDropdown", {
     Values = { "10", "15", "20", "25", "27", "30", "40", "50" },
     Default = "27",
     Text = "Feeder Target Level",
@@ -349,20 +358,19 @@ FeederConfigGroup:AddDropdown("AutoUpgradeTargetDropdown", {
     end
 })
 
-FeederConfigGroup:AddDropdown("BuyGeneratorDelayDropdown", {
+AllConfigsGroup:AddDropdown("BuyGeneratorDelayDropdown", {
     Values = { "0.5s", "1s", "2s", "3s", "5s" },
     Default = "3s",
-    Text = "Delay to Buy Generator",
+    Text = "Buy Generator Delay",
     Callback = function(Value)
         local numStr = Value:gsub("s", "")
         getgenv().BuyGeneratorDelay = tonumber(numStr) or 3
     end
 })
 
-local TowerConfigGroup = Tabs.Farming:AddRightGroupbox("⚙️ Tower Config", "boxes")
-getgenv().TowerDelay = 15
-
-TowerConfigGroup:AddInput("TowerDelayInput", {
+AllConfigsGroup:AddDivider()
+AllConfigsGroup:AddLabel("<font color=\"#FF9900\"><b>--- Tower Settings ---</b></font>")
+AllConfigsGroup:AddInput("TowerDelayInput", {
     Text = "Tower Start Delay (s)",
     Default = "15",
     Numeric = true,
@@ -415,11 +423,11 @@ MainControlsGroup:AddToggle("AutoProgressionToggle", {
                             towerBest = DataController.towerBest
                         end
                         
-                        -- Update Green/Colored Label Status
+                        -- Update Labels sa Info Tab
                         if towerBest >= reqFloor then
-                            FloorLabel:SetText("<font color=\"#00FF00\">Highest Floor: " .. tostring(towerBest) .. " / Req: " .. tostring(reqFloor) .. "</font>")
+                            FloorLabel:SetText("<font color=\"#FFFFFF\">Floor Progress: </font><font color=\"#00FF00\">Highest: " .. tostring(towerBest) .. " / Req: " .. tostring(reqFloor) .. "</font>")
                         else
-                            FloorLabel:SetText("<font color=\"#FF9900\">Highest Floor: " .. tostring(towerBest) .. " / Req: " .. tostring(reqFloor) .. "</font>")
+                            FloorLabel:SetText("<font color=\"#FFFFFF\">Floor Progress: </font><font color=\"#FF9900\">Highest: " .. tostring(towerBest) .. " / Req: " .. tostring(reqFloor) .. "</font>")
                         end
                         
                         local where = "corral"
@@ -436,7 +444,7 @@ MainControlsGroup:AddToggle("AutoProgressionToggle", {
                         
                         if towerBest < reqFloor then
                             if not isInTower then
-                                StatusLabel:SetText("<font color=\"#00E5FF\">Current Status: Running Elevator (Floor " .. tostring(towerBest) .. ")</font>")
+                                StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#00E5FF\">Running Elevator (Floor " .. tostring(towerBest) .. ")</font>")
                                 
                                 local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
                                 if elevatorRemote then
@@ -450,7 +458,7 @@ MainControlsGroup:AddToggle("AutoProgressionToggle", {
                                 end
                                 
                                 task.wait(0.5)
-                                StatusLabel:SetText("<font color=\"#00FF00\">Current Status: Starting Tower Run...</font>")
+                                StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#00FF00\">Starting Tower Run...</font>")
                                 local startRemote = Remotes:FindFirstChild("TowerStart")
                                 if startRemote then
                                     pcall(function() startRemote:InvokeServer() end)
@@ -458,10 +466,10 @@ MainControlsGroup:AddToggle("AutoProgressionToggle", {
                                 
                                 task.wait(getgenv().TowerDelay or 15)
                             else
-                                StatusLabel:SetText("<font color=\"#00FF00\">Current Status: Playing inside tower...</font>")
+                                StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#00FF00\">Playing inside tower...</font>")
                             end
                         else
-                            StatusLabel:SetText("<font color=\"#FF3366\">Current Status: Retreating from Tower...</font>")
+                            StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#FF3366\">Retreating from Tower...</font>")
                             
                             pcall(function()
                                 local retreatRemote = Remotes:FindFirstChild("TowerSurrender") 
@@ -478,7 +486,7 @@ MainControlsGroup:AddToggle("AutoProgressionToggle", {
                             
                             task.wait(3)
                             
-                            StatusLabel:SetText("<font color=\"#FFCC00\">Current Status: Executing Rebirth...</font>")
+                            StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#FFCC00\">Executing Rebirth...</font>")
                             local rebirthRemote = Remotes:FindFirstChild("Rebirth")
                             if rebirthRemote then
                                 pcall(function()
@@ -497,7 +505,7 @@ MainControlsGroup:AddToggle("AutoProgressionToggle", {
                     if not success then warn("[Error]:", err) end
                     task.wait(2)
                 end
-                StatusLabel:SetText("<font color=\"#AAAAAA\">Current Status: Idle</font>")
+                StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#AAAAAA\">Idle</font>")
             end)
         end
     end

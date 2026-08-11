@@ -5,7 +5,7 @@ local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
 local Window = Library:CreateWindow({
     Title = "𝙼𝙰𝙺𝙸 𝙷𝚄𝙱",
-    Footer = "Maki Hub | Premium Edition",
+    Footer = "Maki Hub | TV Screen Edition",
     Icon = 6023426915,
     NotifySide = "Right",
     ShowCustomCursor = true,
@@ -41,26 +41,28 @@ SaveManager:BuildConfigSection(Tabs["UI Settings"])
 ThemeManager:ApplyToTab(Tabs["UI Settings"])
 
 -- ===================================================
--- 1ST TAB: INFO (MALAKI AT MAGKABIYAK NA DASHBOARD)
+-- 1ST TAB: INFO (TV SCREEN DASHBOARD)
 -- ===================================================
-local InfoLeftBox = Tabs.Info:AddLeftGroupbox("📊 LIVE PROGRESSION STATUS", "activity")
-local InfoRightBox = Tabs.Info:AddRightGroupbox("ℹ️ HUB & PLAYER INFO", "user")
+local LiveProgressionGroup = Tabs.Info:AddLeftGroupbox("📺 LIVE PROGRESSION MONITOR", "activity")
+local HubInfoGroup = Tabs.Info:AddLeftGroupbox("ℹ️ HUB & PLAYER INFO", "user")
 
-InfoLeftBox:AddLabel("<font color=\"#00FF88\"><b>=== CURRENT ACTIVITY ===</b></font>")
-local StatusLabel = InfoLeftBox:AddLabel("<font color=\"#FFFFFF\">Status: </font><font color=\"#AAAAAA\">Idle</font>")
-local FloorLabel = InfoLeftBox:AddLabel("<font color=\"#FFFFFF\">Floor Progress: </font><font color=\"#FF9900\">Highest: 0 / Req: 0</font>")
-InfoLeftBox:AddDivider()
-InfoLeftBox:AddLabel("<font color=\"#00E5FF\"><b>=== AUTOMATION FLOW ===</b></font>")
-InfoLeftBox:AddLabel("<font color=\"#AAAAAA\">• Auto Tower Elevator</font>")
-InfoLeftBox:AddLabel("<font color=\"#AAAAAA\">• Auto Tower Surrender & Rebirth</font>")
+LiveProgressionGroup:AddLabel("<font color=\"#00FF88\"><b>==================== MAIN STATUS ====================</b></font>")
+local StatusLabel = LiveProgressionGroup:AddLabel("<font color=\"#FFFFFF\">Current Activity : </font><font color=\"#AAAAAA\">Idle</font>")
+local FloorLabel = LiveProgressionGroup:AddLabel("<font color=\"#FFFFFF\">Floor Requirement : </font><font color=\"#FF9900\">Highest: 0 / Required: 0</font>")
 
-InfoRightBox:AddLabel("<font color=\"#00E5FF\"><b>=== MAKI HUB DETAILS ===</b></font>")
-InfoRightBox:AddLabel("Script Name : <font color=\"#FFCC00\"><b>MAKI HUB</b></font>")
-InfoRightBox:AddLabel("Version     : <font color=\"#00FF00\">v3.0 Ultra Clean</font>")
-InfoRightBox:AddLabel("Status      : <font color=\"#00FF00\">Undetected / Active</font>")
-InfoRightBox:AddDivider()
-InfoRightBox:AddLabel("<font color=\"#FF9900\"><b>=== PLAYER STATS ===</b></font>")
-local PlayerNameLabel = InfoRightBox:AddLabel("Player : <font color=\"#FFFFFF\">" .. game:GetService("Players").LocalPlayer.DisplayName .. "</font>")
+LiveProgressionGroup:AddDivider()
+LiveProgressionGroup:AddLabel("<font color=\"#00E5FF\"><b>==================== FARM STATUS ====================</b></font>")
+local CoopStatusLabel = LiveProgressionGroup:AddLabel("<font color=\"#FFFFFF\">Coop Level : </font><font color=\"#00FF00\">Detecting...</font>")
+local FeederStatusLabel = LiveProgressionGroup:AddLabel("<font color=\"#FFFFFF\">Feeder Stats : </font><font color=\"#00E5FF\">Detecting...</font>")
+
+LiveProgressionGroup:AddDivider()
+LiveProgressionGroup:AddLabel("<font color=\"#FFCC00\"><b>================== AUTOMATION FLOW ==================</b></font>")
+LiveProgressionGroup:AddLabel("<font color=\"#AAAAAA\">[✓] Auto Tower Progression & Auto Screen Clicker</font>")
+LiveProgressionGroup:AddLabel("<font color=\"#AAAAAA\">[✓] Auto Rebirth Screen Bypass Enabled</font>")
+
+HubInfoGroup:AddLabel("Script Name : <font color=\"#FFCC00\"><b>MAKI HUB</b></font>  |  Version : <font color=\"#00FF00\">v4.0 Fixed Rebirth</font>")
+HubInfoGroup:AddLabel("Status      : <font color=\"#00FF00\">Undetected / Active</font>")
+HubInfoGroup:AddLabel("Player Name : <font color=\"#FFFFFF\">" .. game:GetService("Players").LocalPlayer.DisplayName .. "</font>")
 
 -- ===================================================
 -- 2ND TAB: FARMING - LEFT COLUMN (MAIN TOGGLES)
@@ -381,7 +383,101 @@ AllConfigsGroup:AddInput("TowerDelayInput", {
     end
 })
 -- ===================================================
--- PROGRESSION TOGGLE & SMART FLOW LOOP
+-- LIVE MONITORING LOOP FOR COOP & FEEDERS
+-- ===================================================
+task.spawn(function()
+    while task.wait(1) do
+        pcall(function()
+            local coopsFolder = workspace:FindFirstChild("Coops")
+            local coopLevel = 1
+            local feederCount = 0
+            local lowestFeederLvl = math.huge
+            local highestFeederLvl = 0
+
+            if coopsFolder then
+                local myCoopUI = coopsFolder:FindFirstChild("CoopUI")
+                if myCoopUI then
+                    for _, child in ipairs(myCoopUI:GetChildren()) do
+                        local sGui = child:FindFirstChildOfClass("SurfaceGui")
+                        if sGui then
+                            for _, desc in ipairs(sGui:GetDescendants()) do
+                                if desc:IsA("TextLabel") then
+                                    local txt = desc.Text or ""
+                                    if txt:match("Nv%.(%d+)") then
+                                        local lvl = tonumber(txt:match("Nv%.(%d+)"))
+                                        if lvl then
+                                            coopLevel = lvl
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if child.Name == "Feeder" or child:GetAttribute("Level") then
+                            feederCount = feederCount + 1
+                            local fLvl = child:GetAttribute("Level") or 1
+                            if fLvl < lowestFeederLvl then lowestFeederLvl = fLvl end
+                            if fLvl > highestFeederLvl then highestFeederLvl = fLvl end
+                        end
+                    end
+                end
+            end
+
+            CoopStatusLabel:SetText("<font color=\"#FFFFFF\">Coop Level : </font><font color=\"#00FF88\">Level " .. tostring(coopLevel) .. "</font>")
+            
+            if feederCount > 0 then
+                if lowestFeederLvl == math.huge then lowestFeederLvl = 1 end
+                FeederStatusLabel:SetText("<font color=\"#FFFFFF\">Feeder Stats : </font><font color=\"#00E5FF\">" .. tostring(feederCount) .. " Active (Lowest: Lvl " .. tostring(lowestFeederLvl) .. " | Highest: Lvl " .. tostring(highestFeederLvl) .. ")</font>")
+            else
+                FeederStatusLabel:SetText("<font color=\"#FFFFFF\">Feeder Stats : </font><font color=\"#FF9900\">0 Feeders Built</font>")
+            end
+        end)
+    end
+end)
+
+-- ===================================================
+-- AUTO REBIRTH SCREEN BYPASS / CLICKER (FIXES STUCK POPUP)
+-- ===================================================
+task.spawn(function()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local GuiService = game:GetService("GuiService")
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+
+    while task.wait(0.5) do
+        if getgenv().AutoProgression then
+            pcall(function()
+                local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+                if playerGui then
+                    -- Scan for Rebirth UI / Back to coop buttons
+                    for _, gui in ipairs(playerGui:GetChildren()) do
+                        if gui:IsA("ScreenGui") and gui.Enabled then
+                            for _, btn in ipairs(gui:GetDescendants()) do
+                                if btn:IsA("TextButton") or btn:IsA("ImageButton") then
+                                    local txt = (btn:IsA("TextButton") and btn.Text or ""):lower()
+                                    local name = btn.Name:lower()
+                                    
+                                    if txt:find("back to your coop") or txt:find("rebirth") or name:find("rebirth") or name:find("backtocoop") then
+                                        -- Auto Click Rebirth/Back Button
+                                        local pos = btn.AbsolutePosition
+                                        local size = btn.AbsoluteSize
+                                        VirtualInputManager:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2 + 36, 0, true, game, 1)
+                                        task.wait(0.05)
+                                        VirtualInputManager:SendMouseButtonEvent(pos.X + size.X/2, pos.Y + size.Y/2 + 36, 0, false, game, 1)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ===================================================
+-- FAST & ACCURATE PROGRESSION LOOP (REALTIME SCREEN FLOOR DETECTION)
 -- ===================================================
 MainControlsGroup:AddToggle("AutoProgressionToggle", {
     Text = "Enable Progression Flow",
@@ -395,6 +491,8 @@ MainControlsGroup:AddToggle("AutoProgressionToggle", {
                 local LocalPlayer = Players.LocalPlayer
                 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
                 
+                local lastStart = 0
+
                 while getgenv().AutoProgression do
                     local success, err = pcall(function()
                         local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
@@ -413,21 +511,43 @@ MainControlsGroup:AddToggle("AutoProgressionToggle", {
                             end
                         end
                         
-                        local reqFloor = RebirthBonus.requirementFloor(currentRebirths)
+                        local reqFloor = RebirthBonus.requirementFloor(currentRebirths) or 0
                         
-                        local towerBest = 0
-                        if type(DataController.towerBest) == "function" then
-                            local successVal, resVal = pcall(DataController.towerBest)
-                            if successVal then towerBest = tonumber(resVal) or 0 end
-                        elseif type(DataController.towerBest) == "number" then
-                            towerBest = DataController.towerBest
+                        -- REALTIME SCREEN SCAN FOR CURRENT TOWER FLOOR (Fixes DataController Lag)
+                        local currentRealFloor = 0
+                        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+                        if playerGui then
+                            for _, gui in ipairs(playerGui:GetChildren()) do
+                                if gui:IsA("ScreenGui") and gui.Enabled then
+                                    for _, label in ipairs(gui:GetDescendants()) do
+                                        if label:IsA("TextLabel") and label.Text then
+                                            local f, r = label.Text:match("(%d+)%s*/%s*(%d+)")
+                                            if f and r then
+                                                currentRealFloor = tonumber(f) or 0
+                                                if tonumber(r) then reqFloor = tonumber(r) end
+                                                break
+                                            end
+                                        end
+                                    end
+                                end
+                                if currentRealFloor > 0 then break end
+                            end
+                        end
+
+                        if currentRealFloor == 0 then
+                            if type(DataController.towerBest) == "function" then
+                                local successVal, resVal = pcall(DataController.towerBest)
+                                if successVal then currentRealFloor = tonumber(resVal) or 0 end
+                            elseif type(DataController.towerBest) == "number" then
+                                currentRealFloor = DataController.towerBest
+                            end
                         end
                         
-                        -- Update Labels sa Info Tab
-                        if towerBest >= reqFloor then
-                            FloorLabel:SetText("<font color=\"#FFFFFF\">Floor Progress: </font><font color=\"#00FF00\">Highest: " .. tostring(towerBest) .. " / Req: " .. tostring(reqFloor) .. "</font>")
+                        -- Update UI Status
+                        if currentRealFloor >= reqFloor and reqFloor > 0 then
+                            FloorLabel:SetText("<font color=\"#FFFFFF\">Floor Requirement : </font><font color=\"#00FF00\">Highest: " .. tostring(currentRealFloor) .. " / Required: " .. tostring(reqFloor) .. " (GOAL REACHED!)</font>")
                         else
-                            FloorLabel:SetText("<font color=\"#FFFFFF\">Floor Progress: </font><font color=\"#FF9900\">Highest: " .. tostring(towerBest) .. " / Req: " .. tostring(reqFloor) .. "</font>")
+                            FloorLabel:SetText("<font color=\"#FFFFFF\">Floor Requirement : </font><font color=\"#FF9900\">Highest: " .. tostring(currentRealFloor) .. " / Required: " .. tostring(reqFloor) .. "</font>")
                         end
                         
                         local where = "corral"
@@ -442,70 +562,63 @@ MainControlsGroup:AddToggle("AutoProgressionToggle", {
                         
                         local isInTower = (where == "campaign" or where == "tower")
                         
-                        if towerBest < reqFloor then
-                            if not isInTower then
-                                StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#00E5FF\">Running Elevator (Floor " .. tostring(towerBest) .. ")</font>")
-                                
-                                local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
-                                if elevatorRemote then
+                        -- REALTIME GOAL CHECK
+                        if currentRealFloor >= reqFloor and reqFloor > 0 then
+                            StatusLabel:SetText("<font color=\"#FFFFFF\">Current Activity : </font><font color=\"#FF3366\">Floor " .. tostring(currentRealFloor) .. " Reached! Auto Retracting & Rebirthing...</font>")
+                            
+                            -- Fire all Surrender / Rebirth Remotes
+                            for _, rName in ipairs({"TowerSurrender", "Retreat", "TowerRetreat", "SurrenderTower", "Rebirth"}) do
+                                local r = Remotes:FindFirstChild(rName)
+                                if r then
                                     pcall(function()
-                                        if elevatorRemote:IsA("RemoteFunction") then
-                                            elevatorRemote:InvokeServer(towerBest)
-                                        else
-                                            elevatorRemote:FireServer(towerBest)
-                                        end
+                                        if r:IsA("RemoteFunction") then r:InvokeServer() else r:FireServer() end
                                     end)
                                 end
-                                
-                                task.wait(0.5)
-                                StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#00FF00\">Starting Tower Run...</font>")
-                                local startRemote = Remotes:FindFirstChild("TowerStart")
-                                if startRemote then
-                                    pcall(function() startRemote:InvokeServer() end)
-                                end
-                                
-                                task.wait(getgenv().TowerDelay or 15)
-                            else
-                                StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#00FF00\">Playing inside tower...</font>")
                             end
+                            
+                            task.wait(1)
                         else
-                            StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#FF3366\">Retreating from Tower...</font>")
-                            
-                            pcall(function()
-                                local retreatRemote = Remotes:FindFirstChild("TowerSurrender") 
-                                                   or Remotes:FindFirstChild("Retreat") 
-                                                   or Remotes:FindFirstChild("TowerRetreat")
-                                if retreatRemote then
-                                    if retreatRemote:IsA("RemoteFunction") then
-                                        retreatRemote:InvokeServer()
-                                    else
-                                        retreatRemote:FireServer()
+                            -- STILL NEED FLOORS
+                            if not isInTower then
+                                local currentTime = tick()
+                                local delayTime = getgenv().TowerDelay or 15
+                                
+                                if (currentTime - lastStart) >= delayTime then
+                                    StatusLabel:SetText("<font color=\"#FFFFFF\">Current Activity : </font><font color=\"#00E5FF\">Running Elevator to Floor " .. tostring(currentRealFloor) .. "...</font>")
+                                    
+                                    local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
+                                    if elevatorRemote then
+                                        pcall(function()
+                                            if elevatorRemote:IsA("RemoteFunction") then
+                                                elevatorRemote:InvokeServer(currentRealFloor)
+                                            else
+                                                elevatorRemote:FireServer(currentRealFloor)
+                                            end
+                                        end)
                                     end
+                                    
+                                    task.wait(0.5)
+                                    StatusLabel:SetText("<font color=\"#FFFFFF\">Current Activity : </font><font color=\"#00FF00\">Starting Tower Run...</font>")
+                                    local startRemote = Remotes:FindFirstChild("TowerStart")
+                                    if startRemote then
+                                        pcall(function() startRemote:InvokeServer() end)
+                                    end
+                                    
+                                    lastStart = tick()
+                                else
+                                    local remaining = math.ceil(delayTime - (currentTime - lastStart))
+                                    StatusLabel:SetText("<font color=\"#FFFFFF\">Current Activity : </font><font color=\"#00E5FF\">Waiting Elevator Cooldown (" .. tostring(remaining) .. "s)...</font>")
                                 end
-                            end)
-                            
-                            task.wait(3)
-                            
-                            StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#FFCC00\">Executing Rebirth...</font>")
-                            local rebirthRemote = Remotes:FindFirstChild("Rebirth")
-                            if rebirthRemote then
-                                pcall(function()
-                                    if rebirthRemote:IsA("RemoteFunction") then
-                                        rebirthRemote:InvokeServer()
-                                    else
-                                        rebirthRemote:FireServer()
-                                    end
-                                end)
+                            else
+                                StatusLabel:SetText("<font color=\"#FFFFFF\">Current Activity : </font><font color=\"#00FF00\">Playing inside Tower (Floor " .. tostring(currentRealFloor) .. ")...</font>")
                             end
-                            
-                            task.wait(4)
                         end
                     end)
                     
-                    if not success then warn("[Error]:", err) end
-                    task.wait(2)
+                    if not success then warn("[Progression Loop Error]:", err) end
+                    task.wait(0.5)
                 end
-                StatusLabel:SetText("<font color=\"#FFFFFF\">Status: </font><font color=\"#AAAAAA\">Idle</font>")
+                StatusLabel:SetText("<font color=\"#FFFFFF\">Current Activity : </font><font color=\"#AAAAAA\">Idle</font>")
             end)
         end
     end

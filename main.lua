@@ -65,6 +65,7 @@ local Tabs = {
 
 local Options = Fluent.Options
 
+-- TAB 1: INFO & PERFORMANCE
 local ProgSection = Tabs.Info:AddSection("Progression Status")
 local MainProgPara = ProgSection:AddParagraph({
     Title = "FARM OVERVIEW",
@@ -97,6 +98,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+-- TAB 2: SMART FLOW & FARMING
 local SmartFlowSection = Tabs.Farming:AddSection("🏆 Smart Flow & Auto Progression")
 local StatusParagraph = SmartFlowSection:AddParagraph({
     Title = "Smart Flow Monitor",
@@ -451,6 +453,7 @@ Options.UltimateAutoCoopToggle:OnChanged(function(Value)
     end
 end)
 
+-- TAB 3: SETTINGS & AUTO-LOAD CONFIG
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 

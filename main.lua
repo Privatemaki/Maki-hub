@@ -336,7 +336,7 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
     end
 })
 
-local FarmingConfigGroup = MainTab:AddLeftGroupbox("Smart Flow Config", "boxes")
+local FarmingConfigGroup = Tabs.Main:AddLeftGroupbox("Smart Flow Config")
 
 local StatusLabel = FarmingConfigGroup:AddLabel("Status: Idle")
 local FloorLabel = FarmingConfigGroup:AddLabel("Floor Info: 0 / 0")

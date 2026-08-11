@@ -336,9 +336,7 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
     end
 })
 
--- ===================================================
--- SMART progression UI CONTROLS FOR MAKI-HUB
--- ===================================================
+local FarmingConfigGroup = MainTab:AddLeftGroupbox("Smart Flow Config", "boxes")
 
 local StatusLabel = FarmingConfigGroup:AddLabel("Status: Idle")
 local FloorLabel = FarmingConfigGroup:AddLabel("Floor Info: 0 / 0")

@@ -414,3 +414,44 @@ Fluent:Notify({
     Content = "Script Loaded Successfully!",
     Duration = 4
 })
+-- ===================================================
+-- TAB 3: SETTINGS (FIXED DELETE CONFIG BUTTON)
+-- ===================================================
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+
+InterfaceManager:SetFolder("MakiHubFluent")
+SaveManager:SetFolder("MakiHubFluent/configs")
+
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+local DeleteSection = Tabs.Settings:AddSection("🗑️ Config Management")
+DeleteSection:AddButton({
+    Title = "Delete Current Config",
+    Description = "Permanently deletes the active configuration file.",
+    Callback = function()
+        pcall(function()
+            local folder = "MakiHubFluent/configs/"
+            local configName = Options.SaveManager_ConfigList and Options.SaveManager_ConfigList.Value
+            
+            if configName and configName ~= "" then
+                local fullPath = folder .. configName .. ".json"
+                if delfile and isfile and isfile(fullPath) then
+                    delfile(fullPath)
+                    Fluent:Notify({ Title = "Success", Content = "Na-delete na ang config: " .. configName, Duration = 3 })
+                else
+                    if delfile then
+                        pcall(function() delfile(folder .. configName) end)
+                    end
+                    Fluent:Notify({ Title = "Success", Content = "Triny burahin ang config.", Duration = 3 })
+                end
+            else
+                Fluent:Notify({ Title = "Error", Content = "Walang napiling config sa dropdown para burahin.", Duration = 3 })
+            end
+        end)
+    end
+})

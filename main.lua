@@ -137,6 +137,18 @@ task.spawn(function()
             local minFeederLvl, maxFeederLvl = 99, 0
 
             pcall(function()
+                -- Kumuha ng tamang Current Floor galing sa Arena attribute nang ligtas
+                local currentPlot = LocalPlayer:GetAttribute("Plot")
+                if currentPlot then
+                    local arena = workspace:FindFirstChild("Arenas") and workspace.Arenas:FindFirstChild("Arena" .. tostring(currentPlot))
+                    if arena then
+                        local liveFloor = arena:GetAttribute("TowerFloor")
+                        if liveFloor and tonumber(liveFloor) and tonumber(liveFloor) > 0 then
+                            currFloor = tostring(liveFloor)
+                        end
+                    end
+                end
+
                 local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
                 if playerScripts then
                     local DataController = require(playerScripts.Core.Data.DataController)
@@ -153,12 +165,6 @@ task.spawn(function()
                         highFloor = tostring(DataController.towerBest() or 0)
                     elseif type(DataController.towerBest) == "number" then
                         highFloor = tostring(DataController.towerBest)
-                    end
-
-                    if type(DataController.floor) == "function" then
-                        currFloor = tostring(DataController.floor() or 0)
-                    elseif type(DataController.floor) == "number" then
-                        currFloor = tostring(DataController.floor)
                     end
                 end
 
@@ -209,110 +215,7 @@ task.spawn(function()
         end
     end)
 end)
-
--- ===================================================
--- TAB 2: FARMING CONTROLS
--- ===================================================
-
--- SECTION 1: AUTO PROGRESSION
-local ProgFarmSection = Tabs.Farming:AddSection("🏆 Auto Progression")
-
-ProgFarmSection:AddToggle("AutoProgression", { 
-    Title = "Auto Progression", 
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoProgression = Value
-        if Value then
-            getgenv().CurrentActivityText = "<font color='#00FF88'>Starting Auto Progression...</font>"
-            task.spawn(function()
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                local Players = game:GetService("Players")
-                local LocalPlayer = Players.LocalPlayer
-                local Remotes = ReplicatedStorage:WaitForChild("Remotes")
-                
-                while getgenv().AutoProgression do
-                    local success, err = pcall(function()
-                        local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
-                        if not playerScripts then return end
-                        
-                        local DataController = require(playerScripts.Core.Data.DataController)
-                        local RebirthBonus = require(ReplicatedStorage.Core.Progression.RebirthBonus)
-                        
-                        local currentRebirths = 0
-                        if DataController.rebirth then
-                            local res = DataController.rebirth()
-                            currentRebirths = type(res) == "table" and (res.count or 0) or (tonumber(res) or 0)
-                        end
-                        
-                        local reqFloor = RebirthBonus.requirementFloor(currentRebirths)
-                        
-                        local towerBest = 0
-                        if type(DataController.towerBest) == "function" then
-                            local successVal, resVal = pcall(DataController.towerBest)
-                            if successVal then towerBest = tonumber(resVal) or 0 end
-                        elseif type(DataController.towerBest) == "number" then
-                            towerBest = DataController.towerBest
-                        end
-                        
-                        local where = "corral"
-                        pcall(function()
-                            if playerScripts:FindFirstChild("Features") and playerScripts.Features:FindFirstChild("Chicken") then
-                                local chickenMode = playerScripts.Features.Chicken:FindFirstChild("ChickenMode")
-                                if chickenMode and chickenMode:FindFirstChild("where") then
-                                    where = chickenMode.where()
-                                end
-                            end
-                        end)
-                        
-                        local isInTower = (where == "campaign" or where == "tower")
-                        
-                        if towerBest < reqFloor then
-                            if not isInTower then
-                                getgenv().CurrentActivityText = "<font color='#00E5FF'>Entering Tower (Floor " .. tostring(towerBest) .. ")...</font>"
-                                local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
-                                if elevatorRemote then
-                                    pcall(function()
-                                        if elevatorRemote:IsA("RemoteFunction") then elevatorRemote:InvokeServer(towerBest)
-                                        else elevatorRemote:FireServer(towerBest) end
-                                    end)
-                                end
-                                task.wait(0.5)
-                                local startRemote = Remotes:FindFirstChild("TowerStart")
-                                if startRemote then pcall(function() startRemote:InvokeServer() end) end
-                                task.wait(getgenv().TowerDelay or 1)
-                            else
-                                getgenv().CurrentActivityText = "<font color='#FFD700'>Farming Inside Tower...</font>"
-                            end
-                        else
-                            getgenv().CurrentActivityText = "<font color='#FF4444'>Goal Reached! Retreating & Rebirthing...</font>"
-                            pcall(function()
-                                local retreatRemote = Remotes:FindFirstChild("TowerSurrender") or Remotes:FindFirstChild("Retreat") or Remotes:FindFirstChild("TowerRetreat")
-                                if retreatRemote then
-                                    if retreatRemote:IsA("RemoteFunction") then retreatRemote:InvokeServer()
-                                    else retreatRemote:FireServer() end
-                                end
-                            end)
-                            task.wait(3)
-                            local rebirthRemote = Remotes:FindFirstChild("Rebirth")
-                            if rebirthRemote then
-                                pcall(function()
-                                    if rebirthRemote:IsA("RemoteFunction") then rebirthRemote:InvokeServer()
-                                    else rebirthRemote:FireServer() end
-                                end)
-                            end
-                            task.wait(4)
-                        end
-                    end)
-                    if not success then warn("[Error]:", err) end
-                    task.wait(2)
-                end
-            end)
-        else
-            getgenv().CurrentActivityText = "<font color='#FF4444'>Idle / Stopped</font>"
-        end
-    end
-})
-
+                                 
 -- SECTION 2: GENERAL FARM TOGGLES
 local MainFarmSection = Tabs.Farming:AddSection("🚜 General Farm Toggles")
 

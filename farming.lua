@@ -1,50 +1,190 @@
-local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
-local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
-local Window = Library:CreateWindow({
-    Title = "𝙼𝙰𝙺𝙸 𝙷𝚄𝙱",
-    Footer = "Obsidian UI",
-    Icon = 6023426915,
-    NotifySide = "Right",
-    ShowCustomCursor = true,
+-- ===================================================
+-- MAIN WINDOW CREATION
+-- ===================================================
+local Window = Fluent:CreateWindow({
+    Title = "MAKI HUB",
+    SubTitle = "v1.0",
+    TabWidth = 150,
+    Size = UDim2.fromOffset(990, 650),
+    Acrylic = false,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.End
 })
 
-local Tabs = {
-    Main = Window:AddTab("Main", "home"),
-    ["UI Settings"] = Window:AddTab("UI Settings", "menu"),
-}
+-- ===================================================
+-- MOBILE FLOATING TOGGLE BUTTON (75x75 CIRCLE)
+-- ===================================================
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "MakiHubMobileToggle"
+ToggleGui.Parent = (gethui and gethui()) or game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
 
-getgenv().MakiHubWindow = Window
-getgenv().MakiHubTabs = Tabs
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ToggleButton"
+ToggleButton.Parent = ToggleGui
+ToggleButton.Size = UDim2.fromOffset(75, 75)
+ToggleButton.Position = UDim2.new(0, 15, 0.4, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+ToggleButton.TextColor3 = Color3.fromRGB(0, 255, 136)
+ToggleButton.Text = "MAKI"
+ToggleButton.TextSize = 16
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Active = true
+ToggleButton.Draggable = true
 
-local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu", "boxes")
-MenuGroup:AddButton("Unload", function() Library:Unload() end)
-MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "End", NoUI = true, Text = "Menu keybind" })
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(1, 0)
+UICorner.Parent = ToggleButton
 
-MenuGroup:AddButton("Auto Rejoin", function()
-    local ts = game:GetService("TeleportService")
-    local p = game:GetService("Players").LocalPlayer
-    ts:Teleport(game.PlaceId, p)
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(0, 255, 136)
+UIStroke.Thickness = 3
+UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIStroke.Parent = ToggleButton
+
+ToggleButton.MouseButton1Click:Connect(function()
+    Window:Minimize()
 end)
 
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
-SaveManager:SetFolder("MakiHubConfigs")
-SaveManager:BuildConfigSection(Tabs["UI Settings"])
-ThemeManager:ApplyToTab(Tabs["UI Settings"])
+local function FixRichText(paragraphObj)
+    task.spawn(function()
+        task.wait(0.1)
+        if paragraphObj and paragraphObj.Frame then
+            for _, child in pairs(paragraphObj.Frame:GetDescendants()) do
+                if child:IsA("TextLabel") then
+                    child.RichText = true
+                    child.TextSize = 16
+                end
+            end
+        end
+    end)
+end
+
+local Tabs = {
+    Info = Window:AddTab({ Title = "Info", Icon = "info" }),
+    Farming = Window:AddTab({ Title = "Farming", Icon = "sprout" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+
+local Options = Fluent.Options
 
 -- ===================================================
--- HATCH CONFIG
+-- TABS & SECTIONS SETUP
 -- ===================================================
-local HatchGroup = Tabs.Main:AddLeftGroupbox("Hatch Config", "boxes")
+local ProgSection = Tabs.Info:AddSection("Progression Status")
+local MainProgPara = ProgSection:AddParagraph({
+    Title = "FARM OVERVIEW",
+    Content = "\n" ..
+              "- <b>Current Activity</b>  :  <font color='#00FF88'>Initializing...</font>\n\n" ..
+              "- <b>Current Floor</b>     :  <font color='#FFD700'>0</font>\n\n" ..
+              "- <b>Highest Floor</b>     :  <font color='#FFD700'>0</font>\n\n" ..
+              "- <b>Requirements</b>      :  <font color='#00FF88'>Checking...</font>\n\n" ..
+              "--------------------------------------------------\n\n" ..
+              "- <b>Coop Level</b>        :  <font color='#00FF88'>Level 1</font>\n\n" ..
+              "- <b>Generator Level</b>   :  <font color='#00FF88'>Level 0</font>\n\n" ..
+              "- <b>Feeders Status</b>    :  <font color='#00E5FF'>Scanning...</font>"
+})
+FixRichText(MainProgPara)
 
-getgenv().AutoOpenAll = false
+-- LIVE FARM OVERVIEW UPDATE LOOP (WITH REAL COOP & GENERATOR LEVEL SCANNER)
+task.spawn(function()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    
+    while true do
+        pcall(function()
+            local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+            if not playerScripts then return end
+            
+            local DataController = require(playerScripts.Core.Data.DataController)
+            local RebirthBonus = require(ReplicatedStorage.Core.Progression.RebirthBonus)
+            
+            local currentRebirths = 0
+            if DataController.rebirth then
+                local res = DataController.rebirth()
+                if type(res) == "table" then currentRebirths = res.count or 0
+                else currentRebirths = tonumber(res) or 0 end
+            end
+            
+            local reqFloor = RebirthBonus.requirementFloor(currentRebirths)
+            
+            local towerBest = 0
+            if type(DataController.towerBest) == "function" then
+                local sVal, rVal = pcall(DataController.towerBest)
+                if sVal then towerBest = tonumber(rVal) or 0 end
+            elseif type(DataController.towerBest) == "number" then
+                towerBest = DataController.towerBest
+            end
+            
+            local liveFloor = 0
+            local currentPlot = LocalPlayer:GetAttribute("Plot")
+            if currentPlot ~= nil then
+                local arenasFolder = workspace:FindFirstChild("Arenas")
+                if arenasFolder ~= nil then
+                    local arena = arenasFolder:FindFirstChild("Arena" .. tostring(currentPlot))
+                    if arena ~= nil then
+                        local f = arena:GetAttribute("TowerFloor")
+                        if f then liveFloor = tonumber(f) or 0 end
+                    end
+                end
+            end
+            
+            local coopLevel = 1
+            local activeFeedersCount = 0
+            local coopsFolder = workspace:FindFirstChild("Coops")
+            if coopsFolder then
+                local myCoopUI = coopsFolder:FindFirstChild("CoopUI")
+                if myCoopUI then
+                    for _, child in ipairs(myCoopUI:GetChildren()) do
+                        if child.Name == "Feeder" then
+                            activeFeedersCount = activeFeedersCount + 1
+                        end
+                        local sGui = child:FindFirstChildOfClass("SurfaceGui")
+                        if sGui then
+                            for _, desc in ipairs(sGui:GetDescendants()) do
+                                if desc:IsA("TextLabel") then
+                                    local txt = desc.Text or ""
+                                    if txt:match("Nv%.(%d+)") then
+                                        local lvl = tonumber(txt:match("Nv%.(%d+)"))
+                                        if lvl and lvl >= 1 and lvl <= 5 then
+                                            coopLevel = lvl
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            
+            local activityText = getgenv().AutoProgression and "<font color='#00FF88'>[ACTIVE] Progression Running</font>" or "<font color='#FF5555'>[IDLE] Paused</font>"
+            
+            MainProgPara:SetDesc(
+                "\n" ..
+                "- <b>Current Activity</b>  :  " .. activityText .. "\n\n" ..
+                "- <b>Current Floor</b>     :  <font color='#FFD700'>" .. tostring(liveFloor) .. "</font>\n\n" ..
+                "- <b>Highest Floor</b>     :  <font color='#FFD700'>" .. tostring(towerBest) .. "</font>\n\n" ..
+                "- <b>Requirements</b>      :  <font color='#00FF88'>Floor " .. tostring(reqFloor) .. "</font>\n\n" ..
+                "--------------------------------------------------\n\n" ..
+                "- <b>Coop Level</b>        :  <font color='#00FF88'>Level " .. tostring(coopLevel) .. "</font>\n\n" ..
+                "- <b>Generator Level</b>   :  <font color='#00FF88'>" .. tostring(activeFeedersCount) .. " Units Active</font>\n\n" ..
+                "- <b>Feeders Status</b>    :  <font color='#00E5FF'>Target: Level " .. tostring(getgenv().AutoUpgradeFeederTarget or 27) .. "</font>"
+            )
+        end)
+        task.wait(1)
+    end
+end)
+-- ===================================================
+-- FARMING TAB & FEATURES
+-- ===================================================
+local HatchGroup = Tabs.Farming:AddSection("🥚 Hatch Config")
 HatchGroup:AddToggle("AutoOpenAllToggle", {
-    Text = "Auto Open All Eggs",
+    Title = "Auto Open All Eggs",
     Default = false,
     Callback = function(Value)
         getgenv().AutoOpenAll = Value
@@ -65,9 +205,8 @@ HatchGroup:AddToggle("AutoOpenAllToggle", {
     end
 })
 
-getgenv().EggSpawnDelay = 5
 HatchGroup:AddInput("EggDelayInput", {
-    Text = "Egg Collect Delay (s)",
+    Title = "Egg Collect Delay (s)",
     Default = "5",
     Numeric = true,
     Finished = true,
@@ -79,9 +218,8 @@ HatchGroup:AddInput("EggDelayInput", {
     end
 })
 
-getgenv().AutoCollectMyCoopOnly = false
 HatchGroup:AddToggle("AutoCollectEggsToggle", {
-    Text = "Auto Collect Coop Eggs (Timer)",
+    Title = "Auto Collect Coop Eggs (Timer)",
     Default = false,
     Callback = function(Value)
         getgenv().AutoCollectMyCoopOnly = Value
@@ -144,18 +282,17 @@ HatchGroup:AddToggle("AutoCollectEggsToggle", {
         end
     end
 })
--- ===================================================
--- BUY FEEDERS & EXPAND
--- ===================================================
-local BuyExpandGroup = Tabs.Main:AddLeftGroupbox("Buy Feeders & Expand", "boxes")
+
+local BuyExpandGroup = Tabs.Farming:AddSection("🚜 Buy Feeders & Expand & Upgrade")
 
 getgenv().UltimateAutoCoop = false
 getgenv().BuyGeneratorDelay = 3
 getgenv().AutoUpgradeFeederTarget = 27
 getgenv().AutoUpgradeToggleState = false
+getgenv().TargetCoopExpandLevel = 5 -- Default max level
 
 BuyExpandGroup:AddToggle("AutoUpgradeToggle", {
-    Text = "Auto Upgrade",
+    Title = "Auto Upgrade Feeder (Obsidian Logic)",
     Default = false,
     Callback = function(Value)
         getgenv().AutoUpgradeToggleState = Value
@@ -198,9 +335,10 @@ BuyExpandGroup:AddToggle("AutoUpgradeToggle", {
 })
 
 BuyExpandGroup:AddDropdown("AutoUpgradeTargetDropdown", {
+    Title = "Feeder Target Level",
     Values = { "10", "15", "20", "25", "27", "30", "40", "50" },
     Default = "27",
-    Text = "Feeder Target Level",
+    Multi = false,
     Callback = function(Value)
         local num = tonumber(Value)
         if num then
@@ -209,10 +347,25 @@ BuyExpandGroup:AddDropdown("AutoUpgradeTargetDropdown", {
     end
 })
 
+-- NEW: Target Coop Level Dropdown para sa pag-expand
+BuyExpandGroup:AddDropdown("TargetCoopExpandDropdown", {
+    Title = "Target Coop Expand Level",
+    Values = { "1", "2", "3", "4", "5" },
+    Default = "5",
+    Multi = false,
+    Callback = function(Value)
+        local num = tonumber(Value)
+        if num then
+            getgenv().TargetCoopExpandLevel = num
+        end
+    end
+})
+
 BuyExpandGroup:AddDropdown("BuyGeneratorDelayDropdown", {
+    Title = "Delay to Buy Generator",
     Values = { "0.5s", "1s", "2s", "3s", "5s" },
     Default = "3s",
-    Text = "Delay to Buy Generator",
+    Multi = false,
     Callback = function(Value)
         local numStr = Value:gsub("s", "")
         getgenv().BuyGeneratorDelay = tonumber(numStr) or 3
@@ -220,7 +373,7 @@ BuyExpandGroup:AddDropdown("BuyGeneratorDelayDropdown", {
 })
 
 BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
-    Text = "Auto Buy Feeders & Expand",
+    Title = "Auto Buy Feeders & Accurate Expand",
     Default = false,
     Callback = function(Value)
         getgenv().UltimateAutoCoop = Value
@@ -262,6 +415,13 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                             end
                         end
 
+                        -- Kung naabot na ng coop ang tinarget mong level sa dropdown, hindi na siya mag-e-expand pa lampas dun
+                        local userTargetCoop = getgenv().TargetCoopExpandLevel or 5
+                        if coopLevel >= userTargetCoop then
+                            task.wait(2)
+                            return
+                        end
+
                         local maxAllowed = coopLevel + 1
                         if maxAllowed > 6 then maxAllowed = 6 end
 
@@ -275,15 +435,10 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                         end
 
                         if currentFeederCount >= maxAllowed then
-                            if coopLevel >= 5 then
-                                task.wait(5)
-                                return
-                            end
-
                             pcall(function()
                                 ExpandEvent:InvokeServer()
                             end)
-                            task.wait(4)
+                            task.wait(1) -- Walang delay na mabigat, accurate at mabilis agad pagka-expand
                             return
                         end
 
@@ -318,7 +473,7 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
                         end
 
                         if playerMoney < 1500 then
-                            task.wait(3)
+                            task.wait(2)
                             return
                         end
 
@@ -340,200 +495,3 @@ BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
         end
     end
 })
--- ===================================================
--- SMART FLOW CONFIG
--- ===================================================
-local SmartFlowGroup = Tabs.Main:AddRightGroupbox("Smart Flow Config", "boxes")
-
-local StatusLabel = SmartFlowGroup:AddLabel("Status: Idle")
-local FloorLabel = SmartFlowGroup:AddLabel("Floor Info: 0 / 0")
-
-getgenv().AutoProgression = false
-getgenv().TowerDelay = 15
-
-SmartFlowGroup:AddInput("TowerDelayInput", {
-    Text = "Tower Start Delay (Seconds)",
-    Default = "15",
-    Numeric = true,
-    Finished = true,
-    Callback = function(Value)
-        local num = tonumber(Value)
-        if num and num > 0 then
-            getgenv().TowerDelay = num
-        end
-    end
-})
-
-SmartFlowGroup:AddToggle("AutoProgressionToggle", {
-    Text = "Enable Progression Flow",
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoProgression = Value
-        if Value then
-            task.spawn(function()
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                local Players = game:GetService("Players")
-                local LocalPlayer = Players.LocalPlayer
-                local Remotes = ReplicatedStorage:WaitForChild("Remotes")
-                
-                while getgenv().AutoProgression do
-                    local success, err = pcall(function()
-                        local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
-                        if not playerScripts then return end
-                        
-                        local DataController = require(playerScripts.Core.Data.DataController)
-                        local RebirthBonus = require(ReplicatedStorage.Core.Progression.RebirthBonus)
-                        
-                        -- Rebirth Count Check
-                        local currentRebirths = 0
-                        if DataController.rebirth then
-                            local res = DataController.rebirth()
-                            if type(res) == "table" then
-                                currentRebirths = res.count or 0
-                            else
-                                currentRebirths = tonumber(res) or 0
-                            end
-                        end
-                        
-                        local reqFloor = RebirthBonus.requirementFloor(currentRebirths)
-                        
-                        -- Tower Best Check
-                        local towerBest = 0
-                        if type(DataController.towerBest) == "function" then
-                            local successVal, resVal = pcall(DataController.towerBest)
-                            if successVal then
-                                towerBest = tonumber(resVal) or 0
-                            end
-                        elseif type(DataController.towerBest) == "number" then
-                            towerBest = DataController.towerBest
-                        end
-                        
-                        -- Green Text Styling
-                        if towerBest >= reqFloor then
-                            FloorLabel:SetText("<font color=\"#00FF00\">Highest Floor: " .. tostring(towerBest) .. " / Req: " .. tostring(reqFloor) .. "</font>")
-                        else
-                            FloorLabel:SetText("Highest Floor: " .. tostring(towerBest) .. " / Req: " .. tostring(reqFloor))
-                        end
-                        
-                        -- Where check
-                        local where = "corral"
-                        pcall(function()
-                            if playerScripts:FindFirstChild("Features") and playerScripts.Features:FindFirstChild("Chicken") then
-                                local chickenMode = playerScripts.Features.Chicken:FindFirstChild("ChickenMode")
-                                if chickenMode and chickenMode:FindFirstChild("where") then
-                                    where = chickenMode.where()
-                                end
-                            end
-                        end)
-                        
-                        local isInTower = (where == "campaign" or where == "tower")
-                        
-                        -- FLOW LOGIC
-                        if towerBest < reqFloor then
-                            if not isInTower then
-                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Running Elevator (Floor " .. tostring(towerBest) .. ")</font>")
-                                
-                                local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
-                                if elevatorRemote then
-                                    pcall(function()
-                                        if elevatorRemote:IsA("RemoteFunction") then
-                                            elevatorRemote:InvokeServer(towerBest)
-                                        else
-                                            elevatorRemote:FireServer(towerBest)
-                                        end
-                                    end)
-                                end
-                                
-                                task.wait(0.5)
-                                
-                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Starting Tower Run...</font>")
-                                local startRemote = Remotes:FindFirstChild("TowerStart")
-                                if startRemote then
-                                    pcall(function()
-                                        startRemote:InvokeServer()
-                                    end)
-                                end
-                                
-                                task.wait(getgenv().TowerDelay or 15)
-                            else
-                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Playing inside tower...</font>")
-                            end
-                        else
-                            -- RETREAT METHOD
-                            StatusLabel:SetText("<font color=\"#00FF00\">Status: Retreating from Tower...</font>")
-                            
-                            pcall(function()
-                                local retreatRemote = Remotes:FindFirstChild("TowerSurrender") 
-                                                   or Remotes:FindFirstChild("Retreat") 
-                                                   or Remotes:FindFirstChild("TowerRetreat")
-                                if retreatRemote then
-                                    if retreatRemote:IsA("RemoteFunction") then
-                                        retreatRemote:InvokeServer()
-                                    else
-                                        retreatRemote:FireServer()
-                                    end
-                                end
-                            end)
-                            
-                            task.wait(3)
-                            
-                            -- REBIRTH EXECUTION
-                            StatusLabel:SetText("<font color=\"#00FF00\">Status: Executing Rebirth...</font>")
-                            local rebirthRemote = Remotes:FindFirstChild("Rebirth")
-                            if rebirthRemote then
-                                pcall(function()
-                                    if rebirthRemote:IsA("RemoteFunction") then
-                                        rebirthRemote:InvokeServer()
-                                    else
-                                        rebirthRemote:FireServer()
-                                    end
-                                end)
-                            end
-                            
-                            task.wait(4)
-                        end
-                    end)
-                    
-                    if not success then
-                        warn("[Error]:", err)
-                    end
-                    
-                    task.wait(2)
-                end
-                StatusLabel:SetText("Status: Idle")
-            end)
-        end
-    end
-})
-
--- ===================================================
--- AUTO CLOSE TELEMETRY & OFFERS
--- ===================================================
-task.spawn(function()
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local remotesFolder = ReplicatedStorage:WaitForChild("Remotes", 5)
-    if remotesFolder then
-        local continueOffer = remotesFolder:FindFirstChild("TowerContinueOffer")
-        local continueDecline = remotesFolder:FindFirstChild("TowerContinueDecline")
-        
-        if continueOffer and continueDecline then
-            continueOffer.OnClientEvent:Connect(function()
-                if getgenv().AutoProgression then
-                    task.wait(0.1)
-                    pcall(function()
-                        continueDecline:FireServer()
-                    end)
-                end
-            end)
-        end
-    end
-end)
-
--- ===================================================
--- SAVE MANAGER LOAD
--- ===================================================
-task.spawn(function()
-    local success, err = pcall(function()
-        SaveManager:LoadAutoloadConfig()
-    end)
-end)

@@ -194,7 +194,6 @@ local TargetUpgradeLevelDropdown = ConfigFarmSection:AddDropdown("TargetUpgradeL
         getgenv().AutoUpgradeFeederTarget = tonumber(Value) or 27
     end
 })
-
 -- ===================================================
 -- SMART PROGRESSION FLOW BACKEND LOOP
 -- ===================================================
@@ -349,7 +348,7 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- TAB 3: SETTINGS (WITH DELETE CONFIG BUTTON)
+-- TAB 3: SETTINGS (WITH FIXED DELETE CONFIG BUTTON)
 -- ===================================================
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
@@ -366,25 +365,32 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 local DeleteSection = Tabs.Settings:AddSection("🗑️ Config Management")
 DeleteSection:AddButton({
     Title = "Delete Current Config",
-    Description = "Permanently deletes the loaded configuration file.",
+    Description = "Permanently deletes the active configuration file.",
     Callback = function()
         Fluent:Dialog({
             Title = "Delete Config",
-            Content = "Are you sure you want to delete your current config file?",
+            Content = "Sigurado ka bang gusto mong burahin ang kasalukuyang config?",
             Buttons = {
                 {
                     Title = "Confirm",
                     Callback = function()
                         pcall(function()
                             local folder = "MakiHubFluent/configs/"
-                            local currentName = SaveManager.AutoloadConfig
-                            if currentName and currentName ~= "" then
-                                if delfile then
-                                    delfile(folder .. currentName .. ".json")
-                                    Fluent:Notify({ Title = "Success", Content = "Config deleted successfully!", Duration = 3 })
+                            local configName = Options.SaveManager_ConfigList and Options.SaveManager_ConfigList.Value
+                            
+                            if configName and configName ~= "" then
+                                local fullPath = folder .. configName .. ".json"
+                                if delfile and isfile and isfile(fullPath) then
+                                    delfile(fullPath)
+                                    Fluent:Notify({ Title = "Success", Content = "Na-delete na ang config: " .. configName, Duration = 3 })
+                                else
+                                    if delfile then
+                                        pcall(function() delfile(folder .. configName) end)
+                                    end
+                                    Fluent:Notify({ Title = "Success", Content = "Triny burahin ang config.", Duration = 3 })
                                 end
                             else
-                                Fluent:Notify({ Title = "Error", Content = "No active config selected/loaded to delete.", Duration = 3 })
+                                Fluent:Notify({ Title = "Error", Content = "Walang napiling config sa dropdown para burahin.", Duration = 3 })
                             end
                         end)
                     end

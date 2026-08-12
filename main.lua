@@ -464,18 +464,20 @@ MainFarmSection:AddToggle("AutoUpgradeToggle", {
     end
 })
 -- ===================================================
--- PART 5: FIXED SMART FLOW CONFIG & ACCURATE REBIRTH LOGIC
+-- SMART FLOW CONFIG (FARMING TAB)
 -- ===================================================
-local SmartFlowGroup = Tabs.Main:AddRightGroupbox("Smart Flow Config", "boxes")
+local SmartFlowSection = Tabs.Farming:AddSection("⚡ Smart Progression & Flow")
 
-local StatusLabel = SmartFlowGroup:AddLabel("Status: Idle")
-local FloorLabel = SmartFlowGroup:AddLabel("Floor Info: 0 / 0")
+local StatusLabel = SmartFlowSection:AddParagraph({
+    Title = "Flow Status",
+    Content = "Status: Idle\nFloor Info: 0 / 0"
+})
 
 getgenv().AutoProgression = false
 getgenv().TowerDelay = 15
 
-SmartFlowGroup:AddInput("TowerDelayInput", {
-    Text = "Tower Start Delay (Seconds)",
+SmartFlowSection:AddInput("TowerDelayInput", {
+    Title = "Tower Start Delay (Seconds)",
     Default = "15",
     Numeric = true,
     Finished = true,
@@ -487,8 +489,8 @@ SmartFlowGroup:AddInput("TowerDelayInput", {
     end
 })
 
-SmartFlowGroup:AddToggle("AutoProgressionToggle", {
-    Text = "Enable Progression Flow",
+SmartFlowSection:AddToggle("AutoProgressionToggle", {
+    Title = "Enable Progression Flow",
     Default = false,
     Callback = function(Value)
         getgenv().AutoProgression = Value
@@ -520,7 +522,7 @@ SmartFlowGroup:AddToggle("AutoProgressionToggle", {
                         
                         local reqFloor = RebirthBonus.requirementFloor(currentRebirths)
                         
-                        -- Tower Best Check & Live Floor Check
+                        -- Tower Best Check
                         local towerBest = 0
                         if type(DataController.towerBest) == "function" then
                             local successVal, resVal = pcall(DataController.towerBest)
@@ -530,8 +532,8 @@ SmartFlowGroup:AddToggle("AutoProgressionToggle", {
                         elseif type(DataController.towerBest) == "number" then
                             towerBest = DataController.towerBest
                         end
-
-                        -- Kunin ang live floor sa kasalukuyang arena kung nasaan man siya
+                        
+                        -- Live Floor Check
                         local liveFloor = 0
                         pcall(function()
                             local currentPlot = LocalPlayer:GetAttribute("Plot")
@@ -547,14 +549,15 @@ SmartFlowGroup:AddToggle("AutoProgressionToggle", {
                             end
                         end)
                         
-                        -- Green Text Styling sa UI Label
-                        if liveFloor >= reqFloor or towerBest >= reqFloor then
-                            FloorLabel:SetText("<font color=\"#00FF00\">Live/Best Floor: " .. tostring(liveFloor > 0 and liveFloor or towerBest) .. " / Req: " .. tostring(reqFloor) .. "</font>")
+                        -- Status Update
+                        local currentFloorDisplay = liveFloor > 0 and liveFloor or towerBest
+                        if currentFloorDisplay >= reqFloor then
+                            StatusLabel:SetDesc("Status: Goal Reached!\nLive/Best Floor: <font color='#00FF88'>" .. tostring(currentFloorDisplay) .. "</font> / Req: <font color='#FFD700'>" .. tostring(reqFloor) .. "</font>")
                         else
-                            FloorLabel:SetText("Live/Best Floor: " .. tostring(liveFloor > 0 and liveFloor or towerBest) .. " / Req: " .. tostring(reqFloor))
+                            StatusLabel:SetDesc("Status: Climbing Tower...\nLive/Best Floor: " .. tostring(currentFloorDisplay) .. " / Req: " .. tostring(reqFloor))
                         end
                         
-                        -- Where check para malaman kung nasa loob ng tower
+                        -- Where check
                         local where = "corral"
                         pcall(function()
                             if playerScripts:FindFirstChild("Features") and playerScripts.Features:FindFirstChild("Chicken") then
@@ -567,11 +570,9 @@ SmartFlowGroup:AddToggle("AutoProgressionToggle", {
                         
                         local isInTower = (where == "campaign" or where == "tower")
                         
-                        -- SMART FLOW LOGIC (Sinusuri kung naabot na ba ang requirement floor)
+                        -- FLOW LOGIC
                         if (liveFloor > 0 and liveFloor < reqFloor) or (towerBest < reqFloor and not isInTower) then
                             if not isInTower then
-                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Running Elevator (Floor " .. tostring(towerBest) .. ")</font>")
-                                
                                 local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
                                 if elevatorRemote then
                                     pcall(function()
@@ -585,7 +586,6 @@ SmartFlowGroup:AddToggle("AutoProgressionToggle", {
                                 
                                 task.wait(0.5)
                                 
-                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Starting Tower Run...</font>")
                                 local startRemote = Remotes:FindFirstChild("TowerStart")
                                 if startRemote then
                                     pcall(function()
@@ -594,13 +594,9 @@ SmartFlowGroup:AddToggle("AutoProgressionToggle", {
                                 end
                                 
                                 task.wait(getgenv().TowerDelay or 15)
-                            else
-                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Playing inside tower (Climbing)...</font>")
                             end
                         else
-                            -- KAPAG NAABOT NA O LUMAMPAS NA SA REQUIREMENT FLOOR: RETREAT & REBIRTH
-                            StatusLabel:SetText("<font color=\"#00FF00\">Status: Retreating from Tower...</font>")
-                            
+                            -- RETREAT METHOD
                             pcall(function()
                                 local retreatRemote = Remotes:FindFirstChild("TowerSurrender") 
                                                    or Remotes:FindFirstChild("Retreat") 
@@ -617,7 +613,6 @@ SmartFlowGroup:AddToggle("AutoProgressionToggle", {
                             task.wait(3)
                             
                             -- REBIRTH EXECUTION
-                            StatusLabel:SetText("<font color=\"#00FF00\">Status: Executing Rebirth...</font>")
                             local rebirthRemote = Remotes:FindFirstChild("Rebirth")
                             if rebirthRemote then
                                 pcall(function()
@@ -639,7 +634,7 @@ SmartFlowGroup:AddToggle("AutoProgressionToggle", {
                     
                     task.wait(2)
                 end
-                StatusLabel:SetText("Status: Idle")
+                StatusLabel:SetDesc("Status: Idle\nFloor Info: 0 / 0")
             end)
         end
     end

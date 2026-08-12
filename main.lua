@@ -49,7 +49,6 @@ ToggleButton.MouseButton1Click:Connect(function()
     Window:Minimize()
 end)
 
--- Helper Function para i-enable ang RichText
 local function FixRichText(paragraphObj)
     task.spawn(function()
         task.wait(0.1)
@@ -64,9 +63,6 @@ local function FixRichText(paragraphObj)
     end)
 end
 
--- ===================================================
--- TABS CREATION
--- ===================================================
 local Tabs = {
     Info = Window:AddTab({ Title = "Info", Icon = "info" }),
     Farming = Window:AddTab({ Title = "Farming", Icon = "sprout" }),
@@ -75,12 +71,7 @@ local Tabs = {
 
 local Options = Fluent.Options
 
--- ===================================================
--- TAB 1: PROGRESSION STATUS & PERFORMANCE
--- ===================================================
-
 local ProgSection = Tabs.Info:AddSection("Progression Status")
-
 local MainProgPara = ProgSection:AddParagraph({
     Title = "FARM OVERVIEW",
     Content = "\n" ..
@@ -96,17 +87,14 @@ local MainProgPara = ProgSection:AddParagraph({
 FixRichText(MainProgPara)
 
 local SysSection = Tabs.Info:AddSection("Performance Monitor")
-
 local SysPara = SysSection:AddParagraph({
     Title = "Live System Metrics",
     Content = "\n- <b>FPS</b>       :  <font color='#FFD700'>Calculating...</font>\n\n- <b>Ping</b>      :  <font color='#00E5FF'>Calculating...</font>\n\n- <b>Executor</b>  :  Calculating..."
 })
 FixRichText(SysPara)
 
--- REAL-TIME SYSTEM MONITOR LOOP
 local RunService = game:GetService("RunService")
 local StatsService = game:GetService("Stats")
-
 local lastUpdate = tick()
 local frameCount = 0
 local currentFPS = 60
@@ -114,17 +102,14 @@ local currentFPS = 60
 RunService.RenderStepped:Connect(function()
     frameCount = frameCount + 1
     local now = tick()
-    
     if now - lastUpdate >= 1 then
         currentFPS = math.floor(frameCount / (now - lastUpdate))
         frameCount = 0
         lastUpdate = now
-        
         local ping = 0
         pcall(function()
             ping = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
         end)
-        
         SysPara:SetDesc(
             "\n- <b>FPS</b>       :  <font color='#FFD700'>" .. tostring(currentFPS) .. " FPS</font>\n\n" ..
             "- <b>Ping</b>      :  <font color='#00E5FF'>" .. tostring(ping) .. " ms</font>\n\n" ..
@@ -133,70 +118,47 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ===================================================
--- TAB 2: FARMING CONTROLS & CONFIGS
--- ===================================================
-
--- SECTION 1: AUTO PROGRESSION
 local ProgFarmSection = Tabs.Farming:AddSection("🏆 Auto Progression")
 local ToggleAutoProgression = ProgFarmSection:AddToggle("AutoProgression", { Title = "Auto Progression", Default = false })
 
--- SECTION 2: GENERAL FARM TOGGLES
 local MainFarmSection = Tabs.Farming:AddSection("🚜 General Farm Toggles")
-
 local ToggleOpenAll = MainFarmSection:AddToggle("AutoOpenAll", { Title = "Auto Open All Eggs", Default = false })
 local ToggleCollectEggs = MainFarmSection:AddToggle("AutoCollect", { Title = "Auto Collect Coop Eggs", Default = false })
 local ToggleBuyGenExpand = MainFarmSection:AddToggle("BuyGenExpand", { Title = "Buy Generator / Expand", Default = false })
 local ToggleAutoUpgrade = MainFarmSection:AddToggle("AutoUpgrade", { Title = "Auto Upgrade Feeders", Default = false })
 
--- SECTION 3: CONFIGS (Nasa baba ng general farm toggles)
 local ConfigFarmSection = Tabs.Farming:AddSection("⚙️ Farming Configs")
-
-local FloorDelayInput = ConfigFarmSection:AddInput("FloorDelay", {
+ConfigFarmSection:AddInput("FloorDelay", {
     Title = "Floor Farm Delay (Seconds)",
     Default = "1",
     Placeholder = "e.g. 0.5, 1, 2",
     Numeric = true,
     Finished = true,
-    Callback = function(Value)
-        getgenv().TowerDelay = tonumber(Value) or 1
-    end
+    Callback = function(Value) getgenv().TowerDelay = tonumber(Value) or 1 end
 })
-
-local EggDelayInput = ConfigFarmSection:AddInput("EggDelay", {
+ConfigFarmSection:AddInput("EggDelay", {
     Title = "Egg Collect Delay (Seconds)",
     Default = "5",
     Placeholder = "e.g. 1, 3, 5",
     Numeric = true,
     Finished = true,
-    Callback = function(Value)
-        getgenv().EggSpawnDelay = tonumber(Value) or 5
-    end
+    Callback = function(Value) getgenv().EggSpawnDelay = tonumber(Value) or 5 end
 })
-
-local ExpandDelayInput = ConfigFarmSection:AddInput("ExpandDelay", {
+ConfigFarmSection:AddInput("ExpandDelay", {
     Title = "Expand Delay (Seconds)",
     Default = "5",
     Placeholder = "e.g. 2, 5, 10",
     Numeric = true,
     Finished = true,
-    Callback = function(Value)
-        getgenv().ExpandDelay = tonumber(Value) or 5
-    end
+    Callback = function(Value) getgenv().ExpandDelay = tonumber(Value) or 5 end
 })
-
-local TargetUpgradeLevelDropdown = ConfigFarmSection:AddDropdown("TargetUpgradeLevel", {
+ConfigFarmSection:AddDropdown("TargetUpgradeLevel", {
     Title = "Target Level (Auto Upgrade Feeders)",
     Values = {"10", "15", "20", "25", "27", "30", "35", "40"},
     Default = "27",
     Multi = false,
-    Callback = function(Value)
-        getgenv().AutoUpgradeFeederTarget = tonumber(Value) or 27
-    end
+    Callback = function(Value) getgenv().AutoUpgradeFeederTarget = tonumber(Value) or 27 end
 })
--- ===================================================
--- SMART PROGRESSION FLOW BACKEND LOOP
--- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
@@ -215,21 +177,15 @@ task.spawn(function()
                 local currentRebirths = 0
                 if DataController.rebirth then
                     local res = DataController.rebirth()
-                    if type(res) == "table" then
-                        currentRebirths = res.count or 0
-                    else
-                        currentRebirths = tonumber(res) or 0
-                    end
+                    if type(res) == "table" then currentRebirths = res.count or 0
+                    else currentRebirths = tonumber(res) or 0 end
                 end
                 
                 local reqFloor = RebirthBonus.requirementFloor(currentRebirths)
-                
                 local towerBest = 0
                 if type(DataController.towerBest) == "function" then
                     local successVal, resVal = pcall(DataController.towerBest)
-                    if successVal then
-                        towerBest = tonumber(resVal) or 0
-                    end
+                    if successVal then towerBest = tonumber(resVal) or 0 end
                 elseif type(DataController.towerBest) == "number" then
                     towerBest = DataController.towerBest
                 end
@@ -266,166 +222,63 @@ task.spawn(function()
                         local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
                         if elevatorRemote then
                             pcall(function()
-                                if elevatorRemote:IsA("RemoteFunction") then
-                                    elevatorRemote:InvokeServer(towerBest)
-                                else
-                                    elevatorRemote:FireServer(towerBest)
-                                end
+                                if elevatorRemote:IsA("RemoteFunction") then elevatorRemote:InvokeServer(towerBest)
+                                else elevatorRemote:FireServer(towerBest) end
                             end)
                         end
-                        
                         task.wait(0.5)
-                        
                         local startRemote = Remotes:FindFirstChild("TowerStart")
-                        if startRemote then
-                            pcall(function()
-                                startRemote:InvokeServer()
-                            end)
-                        end
-                        
+                        if startRemote then pcall(function() startRemote:InvokeServer() end) end
                         task.wait(getgenv().TowerDelay or 1)
                     end
                 else
                     pcall(function()
-                        local retreatRemote = Remotes:FindFirstChild("TowerSurrender") 
-                                           or Remotes:FindFirstChild("Retreat") 
-                                           or Remotes:FindFirstChild("TowerRetreat")
+                        local retreatRemote = Remotes:FindFirstChild("TowerSurrender") or Remotes:FindFirstChild("Retreat") or Remotes:FindFirstChild("TowerRetreat")
                         if retreatRemote then
-                            if retreatRemote:IsA("RemoteFunction") then
-                                retreatRemote:InvokeServer()
-                            else
-                                retreatRemote:FireServer()
-                            end
+                            if retreatRemote:IsA("RemoteFunction") then retreatRemote:InvokeServer()
+                            else retreatRemote:FireServer() end
                         end
                     end)
-                    
                     task.wait(3)
-                    
                     local rebirthRemote = Remotes:FindFirstChild("Rebirth")
                     if rebirthRemote then
                         pcall(function()
-                            if rebirthRemote:IsA("RemoteFunction") then
-                                rebirthRemote:InvokeServer()
-                            else
-                                rebirthRemote:FireServer()
-                            end
+                            if rebirthRemote:IsA("RemoteFunction") then rebirthRemote:InvokeServer()
+                            else rebirthRemote:FireServer() end
                         end)
                     end
-                    
                     task.wait(4)
                 end
             end)
-            
-            if not success then
-                warn("[Error]:", err)
-            end
+            if not success then warn("[Error]:", err) end
         end
         task.wait(2)
     end
 end)
 
--- ===================================================
--- AUTO CLOSE TELEMETRY & OFFERS
--- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local remotesFolder = ReplicatedStorage:WaitForChild("Remotes", 5)
     if remotesFolder then
         local continueOffer = remotesFolder:FindFirstChild("TowerContinueOffer")
         local continueDecline = remotesFolder:FindFirstChild("TowerContinueDecline")
-        
         if continueOffer and continueDecline then
             continueOffer.OnClientEvent:Connect(function()
                 if getgenv().AutoProgression then
                     task.wait(0.1)
-                    pcall(function()
-                        continueDecline:FireServer()
-                    end)
+                    pcall(function() continueDecline:FireServer() end)
                 end
             end)
         end
     end
 end)
 
--- ===================================================
--- TAB 3: SETTINGS (WITH FIXED DELETE CONFIG BUTTON)
--- ===================================================
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
-
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
-
 InterfaceManager:SetFolder("MakiHubFluent")
 SaveManager:SetFolder("MakiHubFluent/configs")
-
-InterfaceManager:BuildInterfaceSection(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
-
-local DeleteSection = Tabs.Settings:AddSection("🗑️ Config Management")
-DeleteSection:AddButton({
-    Title = "Delete Current Config",
-    Description = "Permanently deletes the active configuration file.",
-    Callback = function()
-        Fluent:Dialog({
-            Title = "Delete Config",
-            Content = "Sigurado ka bang gusto mong burahin ang kasalukuyang config?",
-            Buttons = {
-                {
-                    Title = "Confirm",
-                    Callback = function()
-                        pcall(function()
-                            local folder = "MakiHubFluent/configs/"
-                            local configName = Options.SaveManager_ConfigList and Options.SaveManager_ConfigList.Value
-                            
-                            if configName and configName ~= "" then
-                                local fullPath = folder .. configName .. ".json"
-                                if delfile and isfile and isfile(fullPath) then
-                                    delfile(fullPath)
-                                    Fluent:Notify({ Title = "Success", Content = "Na-delete na ang config: " .. configName, Duration = 3 })
-                                else
-                                    if delfile then
-                                        pcall(function() delfile(folder .. configName) end)
-                                    end
-                                    Fluent:Notify({ Title = "Success", Content = "Triny burahin ang config.", Duration = 3 })
-                                end
-                            else
-                                Fluent:Notify({ Title = "Error", Content = "Walang napiling config sa dropdown para burahin.", Duration = 3 })
-                            end
-                        end)
-                    end
-                },
-                {
-                    Title = "Cancel",
-                    Callback = function() end
-                }
-            }
-        })
-    end
-})
-
-Window:SelectTab(1)
-
--- AUTO LOAD CONFIG FIX
-SaveManager:LoadAutoloadConfig()
-
-Fluent:Notify({
-    Title = "MAKI HUB v1.0",
-    Content = "Script Loaded Successfully!",
-    Duration = 4
-})
--- ===================================================
--- TAB 3: SETTINGS (FIXED DELETE CONFIG BUTTON)
--- ===================================================
-SaveManager:SetLibrary(Fluent)
-InterfaceManager:SetLibrary(Fluent)
-
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({})
-
-InterfaceManager:SetFolder("MakiHubFluent")
-SaveManager:SetFolder("MakiHubFluent/configs")
-
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
@@ -437,16 +290,13 @@ DeleteSection:AddButton({
         pcall(function()
             local folder = "MakiHubFluent/configs/"
             local configName = Options.SaveManager_ConfigList and Options.SaveManager_ConfigList.Value
-            
             if configName and configName ~= "" then
                 local fullPath = folder .. configName .. ".json"
                 if delfile and isfile and isfile(fullPath) then
                     delfile(fullPath)
                     Fluent:Notify({ Title = "Success", Content = "Na-delete na ang config: " .. configName, Duration = 3 })
                 else
-                    if delfile then
-                        pcall(function() delfile(folder .. configName) end)
-                    end
+                    if delfile then pcall(function() delfile(folder .. configName) end) end
                     Fluent:Notify({ Title = "Success", Content = "Triny burahin ang config.", Duration = 3 })
                 end
             else
@@ -454,4 +304,13 @@ DeleteSection:AddButton({
             end
         end)
     end
+})
+
+Window:SelectTab(1)
+SaveManager:LoadAutoloadConfig()
+
+Fluent:Notify({
+    Title = "MAKI HUB v1.0",
+    Content = "Script Loaded Successfully!",
+    Duration = 4
 })

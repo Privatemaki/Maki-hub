@@ -101,7 +101,9 @@ local SysPara = SysSection:AddParagraph({
 })
 FixRichText(SysPara)
 
--- REAL-TIME INFO & PERFORMANCE LOOP
+-- ===================================================
+-- PART 1: REAL-TIME INFO & PERFORMANCE LOOP
+-- ===================================================
 task.spawn(function()
     local RunService = game:GetService("RunService")
     local StatsService = game:GetService("Stats")
@@ -137,16 +139,34 @@ task.spawn(function()
             local minFeederLvl, maxFeederLvl = 99, 0
 
             pcall(function()
-                -- Kumuha ng tamang Current Floor galing sa Arena attribute nang ligtas
+                -- Ligtas na pagkuha ng Current Floor gamit ang Arena attribute
                 local currentPlot = LocalPlayer:GetAttribute("Plot")
-                if currentPlot then
-                    local arena = workspace:FindFirstChild("Arenas") and workspace.Arenas:FindFirstChild("Arena" .. tostring(currentPlot))
-                    if arena then
-                        local liveFloor = arena:GetAttribute("TowerFloor")
-                        if liveFloor and tonumber(liveFloor) and tonumber(liveFloor) > 0 then
-                            currFloor = tostring(liveFloor)
+                if currentPlot ~= nil then
+                    local arenasFolder = workspace:FindFirstChild("Arenas")
+                    if arenasFolder ~= nil then
+                        local arena = arenasFolder:FindFirstChild("Arena" .. tostring(currentPlot))
+                        if arena ~= nil then
+                            local liveFloor = arena:GetAttribute("TowerFloor")
+                            if liveFloor ~= nil and tonumber(liveFloor) and tonumber(liveFloor) > 0 then
+                                currFloor = tostring(liveFloor)
+                            end
                         end
                     end
+                end
+
+                if currFloor == "0" then
+                    pcall(function()
+                        local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+                        if playerScripts ~= nil then
+                            local DataController = require(playerScripts.Core.Data.DataController)
+                            if type(DataController.floor) == "function" then
+                                local f = DataController.floor()
+                                if f and f > 0 then currFloor = tostring(f) end
+                            elseif type(DataController.floor) == "number" and DataController.floor > 0 then
+                                currFloor = tostring(DataController.floor)
+                            end
+                        end
+                    end)
                 end
 
                 local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
@@ -215,7 +235,7 @@ task.spawn(function()
         end
     end)
 end)
-                                 
+
 -- SECTION 2: GENERAL FARM TOGGLES
 local MainFarmSection = Tabs.Farming:AddSection("🚜 General Farm Toggles")
 
@@ -455,6 +475,101 @@ MainFarmSection:AddToggle("AutoUpgradeToggle", {
         end
     end
 })
+-- ===================================================
+-- PART 2: FARMING TAB & AUTO PROGRESSION TOGGLES
+-- ===================================================
+local FarmingSection = FarmingTab:AddSection("Auto Progression & Farming")
+
+FarmingSection:AddToggle({
+    Name = "Auto Progression (Tower/Rebirth)",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoProgression = Value
+        if Value then
+            getgenv().CurrentActivityText = "<font color='#00FF88'>Auto Progression Active...</font>"
+        else
+            getgenv().CurrentActivityText = "<font color='#FF4444'>Idle / Stopped</font>"
+        end
+    end
+})
+
+FarmingSection:AddToggle({
+    Name = "Auto Open All Eggs",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoOpenEggs = Value
+    end
+})
+
+FarmingSection:AddToggle({
+    Name = "Auto Collect Coop Eggs",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoCollectEggs = Value
+    end
+})
+
+-- ===================================================
+-- PART 3: AUTO PROGRESSION & REBIRTH LOGIC (FIXED)
+-- ===================================================
+task.spawn(function()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+
+    while task.shout and task.wait(1) do
+        if getgenv().AutoProgression then
+            pcall(function()
+                local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+                if playerScripts then
+                    local DataController = require(playerScripts.Core.Data.DataController)
+                    local RebirthBonus = require(ReplicatedStorage.Core.Progression.RebirthBonus)
+                    
+                    local currentRebirths = 0
+                    if DataController.rebirth then
+                        local res = DataController.rebirth()
+                        currentRebirths = type(res) == "table" and (res.count or 0) or (tonumber(res) or 0)
+                    end
+                    
+                    local reqFloor = tonumber(RebirthBonus.requirementFloor(currentRebirths)) or 0
+                    local towerBestVal = 0
+                    if type(DataController.towerBest) == "function" then
+                        towerBestVal = tonumber(DataController.towerBest() or 0)
+                    elseif type(DataController.towerBest) == "number" then
+                        towerBestVal = DataController.towerBest
+                    end
+
+                    -- Hindi na hahayaang lumagpas nang sobra; i-trigger ang retreat at rebirth kapag naabot na ang target
+                    if towerBestVal >= reqFloor then
+                        getgenv().CurrentActivityText = "<font color='#FFD700'>Goal Reached! Retreating & Rebirthing...</font>"
+                        
+                        local remotes = ReplicatedStorage:FindFirstChild("Core") and ReplicatedStorage.Core:FindFirstChild("Remotes")
+                        if not remotes then
+                            remotes = ReplicatedStorage:FindFirstChild("Remotes")
+                        end
+                        
+                        if remotes then
+                            local towerSurrender = remotes:FindFirstChild("TowerSurrender")
+                            if towerSurrender then
+                                towerSurrender:FireServer()
+                            end
+                            
+                            local rebirthRemote = remotes:FindFirstChild("Rebirth") or remotes:FindFirstChild("RequestRebirth")
+                            if rebirthRemote then
+                                rebirthRemote:FireServer()
+                            end
+                        end
+                        
+                        task.wait(3)
+                    else
+                        getgenv().CurrentActivityText = "<font color='#00FF88'>Auto Progression Active (Climbing)...</font>"
+                    end
+                end
+            end)
+        end
+    end
+end)
+
 -- SECTION 3: FARMING CONFIG
 local ConfigFarmSection = Tabs.Farming:AddSection("⚙️ Farming Config")
 

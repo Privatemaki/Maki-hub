@@ -479,12 +479,22 @@ AutoProgSection:AddToggle("AutoProgressionToggle", {
     end
 })
 -- ===================================================
--- PART 5: AUTO PROGRESSION LOGIC & FARMING CONFIG
+-- PART 5: FIXED AUTO PROGRESSION & DYNAMIC REMOTE FINDER
 -- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
+
+    -- Helper function para hanapin ang remote kahit saan sa ReplicatedStorage
+    fnct_findRemote = function(name)
+        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("RemoteEvent") and obj.Name:lower() == name:lower() then
+                return obj
+            end
+        end
+        return nil
+    end
 
     while task.wait(1) do
         if getgenv().AutoProgression then
@@ -511,21 +521,15 @@ task.spawn(function()
                     if towerBestVal >= reqFloor then
                         getgenv().CurrentActivityText = "<font color='#FFD700'>Goal Reached! Retreating & Rebirthing...</font>"
                         
-                        local remotes = ReplicatedStorage:FindFirstChild("Core") and ReplicatedStorage.Core:FindFirstChild("Remotes")
-                        if not remotes then
-                            remotes = ReplicatedStorage:FindFirstChild("Remotes")
+                        -- Dynamic remote search and trigger
+                        local retreatRemote = fnct_findRemote("TowerSurrender") or fnct_findRemote("Surrender") or fnct_findRemote("LeaveTower") or fnct_findRemote("QuitTower")
+                        if retreatRemote then
+                            pcall(function() retreatRemote:FireServer() end)
                         end
                         
-                        if remotes then
-                            local towerSurrender = remotes:FindFirstChild("TowerSurrender")
-                            if towerSurrender then
-                                towerSurrender:FireServer()
-                            end
-                            
-                            local rebirthRemote = remotes:FindFirstChild("Rebirth") or remotes:FindFirstChild("RequestRebirth")
-                            if rebirthRemote then
-                                rebirthRemote:FireServer()
-                            end
+                        local rebirthRemote = fnct_findRemote("Rebirth") or fnct_findRemote("RequestRebirth") or fnct_findRemote("DoRebirth")
+                        if rebirthRemote then
+                            pcall(function() rebirthRemote:FireServer() end)
                         end
                         
                         task.wait(3)
@@ -579,7 +583,7 @@ ConfigFarmSection:AddDropdown("TargetUpgradeLevel", {
             getgenv().AutoUpgradeFeederTarget = num
         end
     end
-})
+})       
 -- ===================================================
 -- PART 6: TELEMETRY, SETTINGS, & SAVE MANAGER
 -- ===================================================

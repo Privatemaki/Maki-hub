@@ -75,16 +75,78 @@ local ProgSection = Tabs.Info:AddSection("Progression Status")
 local MainProgPara = ProgSection:AddParagraph({
     Title = "FARM OVERVIEW",
     Content = "\n" ..
-              "- <b>Current Activity</b>  :  <font color='#00FF88'>[TEST] Waiting for action...</font>\n\n" ..
-              "- <b>Current Floor</b>     :  <font color='#FFD700'>Floor 52</font>\n\n" ..
-              "- <b>Highest Floor</b>     :  <font color='#FFD700'>Floor 60</font>\n\n" ..
-              "- <b>Requirements</b>      :  <font color='#00FF88'>Floor 50 (GOAL REACHED!)</font>\n\n" ..
+              "- <b>Current Activity</b>  :  <font color='#00FF88'>Initializing...</font>\n\n" ..
+              "- <b>Current Floor</b>     :  <font color='#FFD700'>0</font>\n\n" ..
+              "- <b>Highest Floor</b>     :  <font color='#FFD700'>0</font>\n\n" ..
+              "- <b>Requirements</b>      :  <font color='#00FF88'>Checking...</font>\n\n" ..
               "--------------------------------------------------\n\n" ..
-              "- <b>Coop Level</b>        :  <font color='#00FF88'>Level 5 (MAX)</font>\n\n" ..
-              "- <b>Generator Level</b>   :  <font color='#00FF88'>Level 10 (MAX)</font>\n\n" ..
-              "- <b>Feeders Status</b>    :  <font color='#00E5FF'>6 Active Units</font> <font color='#AAAAAA'>(Level Range: 27-30)</font>"
+              "- <b>Coop Level</b>        :  <font color='#00FF88'>Level 0</font>\n\n" ..
+              "- <b>Generator Level</b>   :  <font color='#00FF88'>Level 0</font>\n\n" ..
+              "- <b>Feeders Status</b>    :  <font color='#00E5FF'>Scanning...</font>"
 })
 FixRichText(MainProgPara)
+
+-- LIVE FARM OVERVIEW UPDATE LOOP
+task.spawn(function()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    
+    while true do
+        pcall(function()
+            local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+            if not playerScripts then return end
+            
+            local DataController = require(playerScripts.Core.Data.DataController)
+            local RebirthBonus = require(ReplicatedStorage.Core.Progression.RebirthBonus)
+            
+            local currentRebirths = 0
+            if DataController.rebirth then
+                local res = DataController.rebirth()
+                if type(res) == "table" then currentRebirths = res.count or 0
+                else currentRebirths = tonumber(res) or 0 end
+            end
+            
+            local reqFloor = RebirthBonus.requirementFloor(currentRebirths)
+            
+            local towerBest = 0
+            if type(DataController.towerBest) == "function" then
+                local sVal, rVal = pcall(DataController.towerBest)
+                if sVal then towerBest = tonumber(rVal) or 0 end
+            elseif type(DataController.towerBest) == "number" then
+                towerBest = DataController.towerBest
+            end
+            
+            local liveFloor = 0
+            local currentPlot = LocalPlayer:GetAttribute("Plot")
+            if currentPlot ~= nil then
+                local arenasFolder = workspace:FindFirstChild("Arenas")
+                if arenasFolder ~= nil then
+                    local arena = arenasFolder:FindFirstChild("Arena" .. tostring(currentPlot))
+                    if arena ~= nil then
+                        local f = arena:GetAttribute("TowerFloor")
+                        if f then liveFloor = tonumber(f) or 0 end
+                    end
+                end
+            end
+            
+            local activityText = getgenv().AutoProgression and "<font color='#00FF88'>[ACTIVE] Auto Progression Running</font>" or "<font color='#FF5555'>[IDLE] Paused</font>"
+            
+            MainProgPara:SetDesc(
+                "\n" ..
+                "- <b>Current Activity</b>  :  " .. activityText .. "\n\n" ..
+                "- <b>Current Floor</b>     :  <font color='#FFD700'>" .. tostring(liveFloor) .. "</font>\n\n" ..
+                "- <b>Highest Floor</b>     :  <font color='#FFD700'>" .. tostring(towerBest) .. "</font>\n\n" ..
+                "- <b>Requirements</b>      :  <font color='#00FF88'>Floor " .. tostring(reqFloor) .. "</font>\n\n" ..
+                "--------------------------------------------------\n\n" ..
+                "- <b>Coop Level</b>        :  <font color='#00FF88'>Synced</font>\n\n" ..
+                "- <b>Generator Level</b>   :  <font color='#00FF88'>Synced</font>\n\n" ..
+                "- <b>Feeders Status</b>    :  <font color='#00E5FF'>Active Target: " .. tostring(getgenv().AutoUpgradeFeederTarget or 27) .. "</font>"
+            )
+        end)
+        task.wait(1)
+    end
+end)
 
 local SysSection = Tabs.Info:AddSection("Performance Monitor")
 local SysPara = SysSection:AddParagraph({
@@ -119,13 +181,33 @@ RunService.RenderStepped:Connect(function()
 end)
 
 local ProgFarmSection = Tabs.Farming:AddSection("🏆 Auto Progression")
-local ToggleAutoProgression = ProgFarmSection:AddToggle("AutoProgression", { Title = "Auto Progression", Default = false })
+local ToggleAutoProgression = ProgFarmSection:AddToggle("AutoProgression", { 
+    Title = "Auto Progression", 
+    Default = false,
+    Callback = function(Value) getgenv().AutoProgression = Value end
+})
 
 local MainFarmSection = Tabs.Farming:AddSection("🚜 General Farm Toggles")
-local ToggleOpenAll = MainFarmSection:AddToggle("AutoOpenAll", { Title = "Auto Open All Eggs", Default = false })
-local ToggleCollectEggs = MainFarmSection:AddToggle("AutoCollect", { Title = "Auto Collect Coop Eggs", Default = false })
-local ToggleBuyGenExpand = MainFarmSection:AddToggle("BuyGenExpand", { Title = "Buy Generator / Expand", Default = false })
-local ToggleAutoUpgrade = MainFarmSection:AddToggle("AutoUpgrade", { Title = "Auto Upgrade Feeders", Default = false })
+local ToggleOpenAll = MainFarmSection:AddToggle("AutoOpenAll", { 
+    Title = "Auto Open All Eggs", 
+    Default = false,
+    Callback = function(Value) getgenv().AutoOpenAll = Value end
+})
+local ToggleCollectEggs = MainFarmSection:AddToggle("AutoCollect", { 
+    Title = "Auto Collect Coop Eggs", 
+    Default = false,
+    Callback = function(Value) getgenv().AutoCollect = Value end
+})
+local ToggleBuyGenExpand = MainFarmSection:AddToggle("BuyGenExpand", { 
+    Title = "Buy Generator / Expand", 
+    Default = false,
+    Callback = function(Value) getgenv().BuyGenExpand = Value end
+})
+local ToggleAutoUpgrade = MainFarmSection:AddToggle("AutoUpgrade", { 
+    Title = "Auto Upgrade Feeders", 
+    Default = false,
+    Callback = function(Value) getgenv().AutoUpgrade = Value end
+})
 
 local ConfigFarmSection = Tabs.Farming:AddSection("⚙️ Farming Configs")
 ConfigFarmSection:AddInput("FloorDelay", {
@@ -160,61 +242,43 @@ ConfigFarmSection:AddDropdown("TargetUpgradeLevel", {
     Callback = function(Value) getgenv().AutoUpgradeFeederTarget = tonumber(Value) or 27 end
 })
 
--- ===================================================
--- CORE FARMING FUNCTIONS & CONNECTIONS
--- ===================================================
+-- GENERAL FARM BACKEND LOOP
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
     
     while true do
         pcall(function()
-            if Options.AutoOpenAll and Options.AutoOpenAll.Value then
-                local openRemote = Remotes and Remotes:FindFirstChild("OpenEgg") or Remotes:FindFirstChild("OpenAllEggs")
+            if getgenv().AutoOpenAll then
+                local openRemote = Remotes and (Remotes:FindFirstChild("OpenEgg") or Remotes:FindFirstChild("OpenAllEggs"))
                 if openRemote then
-                    if openRemote:IsA("RemoteFunction") then
-                        openRemote:InvokeServer()
-                    else
-                        openRemote:FireServer()
-                    end
+                    if openRemote:IsA("RemoteFunction") then openRemote:InvokeServer() else openRemote:FireServer() end
                 end
             end
             
-            if Options.AutoCollect and Options.AutoCollect.Value then
-                local collectRemote = Remotes and Remotes:FindFirstChild("CollectEggs") or Remotes:FindFirstChild("ClaimEggs")
+            if getgenv().AutoCollect then
+                local collectRemote = Remotes and (Remotes:FindFirstChild("CollectEggs") or Remotes:FindFirstChild("ClaimEggs"))
                 if collectRemote then
-                    if collectRemote:IsA("RemoteFunction") then
-                        collectRemote:InvokeServer()
-                    else
-                        collectRemote:FireServer()
-                    end
+                    if collectRemote:IsA("RemoteFunction") then collectRemote:InvokeServer() else collectRemote:FireServer() end
                 end
             end
             
-            if Options.BuyGenExpand and Options.BuyGenExpand.Value then
-                local expandRemote = Remotes and Remotes:FindFirstChild("BuyGenerator") or Remotes:FindFirstChild("ExpandPlot")
+            if getgenv().BuyGenExpand then
+                local expandRemote = Remotes and (Remotes:FindFirstChild("BuyGenerator") or Remotes:FindFirstChild("ExpandPlot") or Remotes:FindFirstChild("BuyFeeder"))
                 if expandRemote then
-                    if expandRemote:IsA("RemoteFunction") then
-                        expandRemote:InvokeServer()
-                    else
-                        expandRemote:FireServer()
-                    end
+                    if expandRemote:IsA("RemoteFunction") then expandRemote:InvokeServer() else expandRemote:FireServer() end
                 end
             end
             
-            if Options.AutoUpgrade and Options.AutoUpgrade.Value then
-                local upgradeRemote = Remotes and Remotes:FindFirstChild("UpgradeFeeder") or Remotes:FindFirstChild("UpgradeFeederLevel")
+            if getgenv().AutoUpgrade then
+                local upgradeRemote = Remotes and (Remotes:FindFirstChild("UpgradeFeeder") or Remotes:FindFirstChild("UpgradeFeederLevel"))
                 if upgradeRemote then
                     local targetLvl = getgenv().AutoUpgradeFeederTarget or 27
-                    if upgradeRemote:IsA("RemoteFunction") then
-                        upgradeRemote:InvokeServer(targetLvl)
-                    else
-                        upgradeRemote:FireServer(targetLvl)
-                    end
+                    if upgradeRemote:IsA("RemoteFunction") then upgradeRemote:InvokeServer(targetLvl) else upgradeRemote:FireServer(targetLvl) end
                 end
             end
         end)
-        task.wait(getgenv().EggSpawnDelay or 5)
+        task.wait(1)
     end
 end)
 -- ===================================================

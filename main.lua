@@ -478,36 +478,38 @@ MainFarmSection:AddToggle("AutoUpgradeToggle", {
 -- ===================================================
 -- PART 2: FARMING TAB & AUTO PROGRESSION TOGGLES
 -- ===================================================
-local FarmingSection = FarmingTab:AddSection("Auto Progression & Farming")
+if FarmingTab then
+    local FarmingSection = FarmingTab:AddSection("Auto Progression & Farming")
 
-FarmingSection:AddToggle({
-    Name = "Auto Progression (Tower/Rebirth)",
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoProgression = Value
-        if Value then
-            getgenv().CurrentActivityText = "<font color='#00FF88'>Auto Progression Active...</font>"
-        else
-            getgenv().CurrentActivityText = "<font color='#FF4444'>Idle / Stopped</font>"
+    FarmingSection:AddToggle({
+        Name = "Auto Progression (Tower/Rebirth)",
+        Default = false,
+        Callback = function(Value)
+            getgenv().AutoProgression = Value
+            if Value then
+                getgenv().CurrentActivityText = "<font color='#00FF88'>Auto Progression Active...</font>"
+            else
+                getgenv().CurrentActivityText = "<font color='#FF4444'>Idle / Stopped</font>"
+            end
         end
-    end
-})
+    })
 
-FarmingSection:AddToggle({
-    Name = "Auto Open All Eggs",
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoOpenEggs = Value
-    end
-})
+    FarmingSection:AddToggle({
+        Name = "Auto Open All Eggs",
+        Default = false,
+        Callback = function(Value)
+            getgenv().AutoOpenEggs = Value
+        end
+    })
 
-FarmingSection:AddToggle({
-    Name = "Auto Collect Coop Eggs",
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoCollectEggs = Value
-    end
-})
+    FarmingSection:AddToggle({
+        Name = "Auto Collect Coop Eggs",
+        Default = false,
+        Callback = function(Value)
+            getgenv().AutoCollectEggs = Value
+        end
+    })
+end
 
 -- ===================================================
 -- PART 3: AUTO PROGRESSION & REBIRTH LOGIC (FIXED)

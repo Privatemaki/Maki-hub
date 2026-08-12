@@ -463,87 +463,20 @@ MainFarmSection:AddToggle("AutoUpgradeToggle", {
         end
     end
 })
-
-local AutoProgSection = Tabs.Farming:AddSection("Auto Progression & Farming")
-
-AutoProgSection:AddToggle("AutoProgressionToggle", {
-    Title = "Auto Progression (Tower/Rebirth)",
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoProgression = Value
-        if Value then
-            getgenv().CurrentActivityText = "<font color='#00FF88'>Auto Progression Active...</font>"
-        else
-            getgenv().CurrentActivityText = "<font color='#FF4444'>Idle / Stopped</font>"
-        end
-    end
-})
 -- ===================================================
--- PART 5: ORIGINAL WORKING AUTO PROGRESSION LOGIC
+-- PART 5: FIXED SMART FLOW CONFIG & ACCURATE REBIRTH LOGIC
 -- ===================================================
-task.spawn(function()
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
+local SmartFlowGroup = Tabs.Main:AddRightGroupbox("Smart Flow Config", "boxes")
 
-    while task.wait(1) do
-        if getgenv().AutoProgression then
-            pcall(function()
-                local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
-                if playerScripts then
-                    local DataController = require(playerScripts.Core.Data.DataController)
-                    local RebirthBonus = require(ReplicatedStorage.Core.Progression.RebirthBonus)
-                    
-                    local currentRebirths = 0
-                    if DataController.rebirth then
-                        local res = DataController.rebirth()
-                        currentRebirths = type(res) == "table" and (res.count or 0) or (tonumber(res) or 0)
-                    end
-                    
-                    local reqFloor = tonumber(RebirthBonus.requirementFloor(currentRebirths)) or 0
-                    local towerBestVal = 0
-                    if type(DataController.towerBest) == "function" then
-                        towerBestVal = tonumber(DataController.towerBest() or 0)
-                    elseif type(DataController.towerBest) == "number" then
-                        towerBestVal = DataController.towerBest
-                    end
+local StatusLabel = SmartFlowGroup:AddLabel("Status: Idle")
+local FloorLabel = SmartFlowGroup:AddLabel("Floor Info: 0 / 0")
 
-                    if towerBestVal >= reqFloor then
-                        getgenv().CurrentActivityText = "<font color='#FFD700'>Goal Reached! Retreating & Rebirthing...</font>"
-                        
-                        local remotes = ReplicatedStorage:FindFirstChild("Core") and ReplicatedStorage.Core:FindFirstChild("Remotes")
-                        if not remotes then
-                            remotes = ReplicatedStorage:FindFirstChild("Remotes")
-                        end
-                        
-                        if remotes then
-                            local towerSurrender = remotes:FindFirstChild("TowerSurrender")
-                            if towerSurrender then
-                                towerSurrender:FireServer()
-                            end
-                            
-                            local rebirthRemote = remotes:FindFirstChild("Rebirth") or remotes:FindFirstChild("RequestRebirth")
-                            if rebirthRemote then
-                                rebirthRemote:FireServer()
-                            end
-                        end
-                        
-                        task.wait(3)
-                    else
-                        getgenv().CurrentActivityText = "<font color='#00FF88'>Auto Progression Active (Climbing)...</font>"
-                    end
-                end
-            end)
-        end
-    end
-end)
+getgenv().AutoProgression = false
+getgenv().TowerDelay = 15
 
-local ConfigFarmSection = Tabs.Farming:AddSection("⚙️ Farming Config")
-
-ConfigFarmSection:AddInput("FloorDelay", {
-    Title = "Floor Farm Delay (Seconds)",
-    Default = "1",
-    Placeholder = "e.g. 0.5, 1, 2",
+SmartFlowGroup:AddInput("TowerDelayInput", {
+    Text = "Tower Start Delay (Seconds)",
+    Default = "15",
     Numeric = true,
     Finished = true,
     Callback = function(Value)
@@ -554,33 +487,163 @@ ConfigFarmSection:AddInput("FloorDelay", {
     end
 })
 
-ConfigFarmSection:AddInput("EggDelay", {
-    Title = "Egg Collect Delay (Seconds)",
-    Default = "5",
-    Placeholder = "e.g. 1, 3, 5",
-    Numeric = true,
-    Finished = true,
+SmartFlowGroup:AddToggle("AutoProgressionToggle", {
+    Text = "Enable Progression Flow",
+    Default = false,
     Callback = function(Value)
-        local num = tonumber(Value)
-        if num and num >= 0 then
-            getgenv().EggSpawnDelay = num
+        getgenv().AutoProgression = Value
+        if Value then
+            task.spawn(function()
+                local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                local Players = game:GetService("Players")
+                local LocalPlayer = Players.LocalPlayer
+                local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+                
+                while getgenv().AutoProgression do
+                    local success, err = pcall(function()
+                        local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+                        if not playerScripts then return end
+                        
+                        local DataController = require(playerScripts.Core.Data.DataController)
+                        local RebirthBonus = require(ReplicatedStorage.Core.Progression.RebirthBonus)
+                        
+                        -- Rebirth Count Check
+                        local currentRebirths = 0
+                        if DataController.rebirth then
+                            local res = DataController.rebirth()
+                            if type(res) == "table" then
+                                currentRebirths = res.count or 0
+                            else
+                                currentRebirths = tonumber(res) or 0
+                            end
+                        end
+                        
+                        local reqFloor = RebirthBonus.requirementFloor(currentRebirths)
+                        
+                        -- Tower Best Check & Live Floor Check
+                        local towerBest = 0
+                        if type(DataController.towerBest) == "function" then
+                            local successVal, resVal = pcall(DataController.towerBest)
+                            if successVal then
+                                towerBest = tonumber(resVal) or 0
+                            end
+                        elseif type(DataController.towerBest) == "number" then
+                            towerBest = DataController.towerBest
+                        end
+
+                        -- Kunin ang live floor sa kasalukuyang arena kung nasaan man siya
+                        local liveFloor = 0
+                        pcall(function()
+                            local currentPlot = LocalPlayer:GetAttribute("Plot")
+                            if currentPlot ~= nil then
+                                local arenasFolder = workspace:FindFirstChild("Arenas")
+                                if arenasFolder ~= nil then
+                                    local arena = arenasFolder:FindFirstChild("Arena" .. tostring(currentPlot))
+                                    if arena ~= nil then
+                                        local f = arena:GetAttribute("TowerFloor")
+                                        if f then liveFloor = tonumber(f) or 0 end
+                                    end
+                                end
+                            end
+                        end)
+                        
+                        -- Green Text Styling sa UI Label
+                        if liveFloor >= reqFloor or towerBest >= reqFloor then
+                            FloorLabel:SetText("<font color=\"#00FF00\">Live/Best Floor: " .. tostring(liveFloor > 0 and liveFloor or towerBest) .. " / Req: " .. tostring(reqFloor) .. "</font>")
+                        else
+                            FloorLabel:SetText("Live/Best Floor: " .. tostring(liveFloor > 0 and liveFloor or towerBest) .. " / Req: " .. tostring(reqFloor))
+                        end
+                        
+                        -- Where check para malaman kung nasa loob ng tower
+                        local where = "corral"
+                        pcall(function()
+                            if playerScripts:FindFirstChild("Features") and playerScripts.Features:FindFirstChild("Chicken") then
+                                local chickenMode = playerScripts.Features.Chicken:FindFirstChild("ChickenMode")
+                                if chickenMode and chickenMode:FindFirstChild("where") then
+                                    where = chickenMode.where()
+                                end
+                            end
+                        end)
+                        
+                        local isInTower = (where == "campaign" or where == "tower")
+                        
+                        -- SMART FLOW LOGIC (Sinusuri kung naabot na ba ang requirement floor)
+                        if (liveFloor > 0 and liveFloor < reqFloor) or (towerBest < reqFloor and not isInTower) then
+                            if not isInTower then
+                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Running Elevator (Floor " .. tostring(towerBest) .. ")</font>")
+                                
+                                local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
+                                if elevatorRemote then
+                                    pcall(function()
+                                        if elevatorRemote:IsA("RemoteFunction") then
+                                            elevatorRemote:InvokeServer(towerBest)
+                                        else
+                                            elevatorRemote:FireServer(towerBest)
+                                        end
+                                    end)
+                                end
+                                
+                                task.wait(0.5)
+                                
+                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Starting Tower Run...</font>")
+                                local startRemote = Remotes:FindFirstChild("TowerStart")
+                                if startRemote then
+                                    pcall(function()
+                                        startRemote:InvokeServer()
+                                    end)
+                                end
+                                
+                                task.wait(getgenv().TowerDelay or 15)
+                            else
+                                StatusLabel:SetText("<font color=\"#00FF00\">Status: Playing inside tower (Climbing)...</font>")
+                            end
+                        else
+                            -- KAPAG NAABOT NA O LUMAMPAS NA SA REQUIREMENT FLOOR: RETREAT & REBIRTH
+                            StatusLabel:SetText("<font color=\"#00FF00\">Status: Retreating from Tower...</font>")
+                            
+                            pcall(function()
+                                local retreatRemote = Remotes:FindFirstChild("TowerSurrender") 
+                                                   or Remotes:FindFirstChild("Retreat") 
+                                                   or Remotes:FindFirstChild("TowerRetreat")
+                                if retreatRemote then
+                                    if retreatRemote:IsA("RemoteFunction") then
+                                        retreatRemote:InvokeServer()
+                                    else
+                                        retreatRemote:FireServer()
+                                    end
+                                end
+                            end)
+                            
+                            task.wait(3)
+                            
+                            -- REBIRTH EXECUTION
+                            StatusLabel:SetText("<font color=\"#00FF00\">Status: Executing Rebirth...</font>")
+                            local rebirthRemote = Remotes:FindFirstChild("Rebirth")
+                            if rebirthRemote then
+                                pcall(function()
+                                    if rebirthRemote:IsA("RemoteFunction") then
+                                        rebirthRemote:InvokeServer()
+                                    else
+                                        rebirthRemote:FireServer()
+                                    end
+                                end)
+                            end
+                            
+                            task.wait(4)
+                        end
+                    end)
+                    
+                    if not success then
+                        warn("[Error]:", err)
+                    end
+                    
+                    task.wait(2)
+                end
+                StatusLabel:SetText("Status: Idle")
+            end)
         end
     end
 })
-
-ConfigFarmSection:AddDropdown("TargetUpgradeLevel", {
-    Title = "Target Level (Auto Upgrade Generator)",
-    Values = {"10", "15", "20", "25", "27", "30", "35", "40"},
-    Default = "27",
-    Multi = false,
-    Callback = function(Value)
-        local num = tonumber(Value)
-        if num then
-            getgenv().AutoUpgradeFeederTarget = num
-        end
-    end
-})
-
 -- ===================================================
 -- PART 6: TELEMETRY, SETTINGS, & SAVE MANAGER
 -- ===================================================

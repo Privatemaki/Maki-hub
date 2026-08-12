@@ -9,7 +9,9 @@ local Window = Library:CreateWindow({
     Icon = 6023426915,
     NotifySide = "Right",
     ShowCustomCursor = true,
+    Size = UDim2.fromOffset(950, 550) -- Pwede mong lakihan o liitan yung 950 para sa lapad
 })
+
 
 local Tabs = {
     Main = Window:AddTab("Main", "home"),

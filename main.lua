@@ -159,6 +159,67 @@ ConfigFarmSection:AddDropdown("TargetUpgradeLevel", {
     Multi = false,
     Callback = function(Value) getgenv().AutoUpgradeFeederTarget = tonumber(Value) or 27 end
 })
+
+-- ===================================================
+-- CORE FARMING FUNCTIONS & CONNECTIONS
+-- ===================================================
+task.spawn(function()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+    
+    while true do
+        pcall(function()
+            if Options.AutoOpenAll and Options.AutoOpenAll.Value then
+                local openRemote = Remotes and Remotes:FindFirstChild("OpenEgg") or Remotes:FindFirstChild("OpenAllEggs")
+                if openRemote then
+                    if openRemote:IsA("RemoteFunction") then
+                        openRemote:InvokeServer()
+                    else
+                        openRemote:FireServer()
+                    end
+                end
+            end
+            
+            if Options.AutoCollect and Options.AutoCollect.Value then
+                local collectRemote = Remotes and Remotes:FindFirstChild("CollectEggs") or Remotes:FindFirstChild("ClaimEggs")
+                if collectRemote then
+                    if collectRemote:IsA("RemoteFunction") then
+                        collectRemote:InvokeServer()
+                    else
+                        collectRemote:FireServer()
+                    end
+                end
+            end
+            
+            if Options.BuyGenExpand and Options.BuyGenExpand.Value then
+                local expandRemote = Remotes and Remotes:FindFirstChild("BuyGenerator") or Remotes:FindFirstChild("ExpandPlot")
+                if expandRemote then
+                    if expandRemote:IsA("RemoteFunction") then
+                        expandRemote:InvokeServer()
+                    else
+                        expandRemote:FireServer()
+                    end
+                end
+            end
+            
+            if Options.AutoUpgrade and Options.AutoUpgrade.Value then
+                local upgradeRemote = Remotes and Remotes:FindFirstChild("UpgradeFeeder") or Remotes:FindFirstChild("UpgradeFeederLevel")
+                if upgradeRemote then
+                    local targetLvl = getgenv().AutoUpgradeFeederTarget or 27
+                    if upgradeRemote:IsA("RemoteFunction") then
+                        upgradeRemote:InvokeServer(targetLvl)
+                    else
+                        upgradeRemote:FireServer(targetLvl)
+                    end
+                end
+            end
+        end)
+        task.wait(getgenv().EggSpawnDelay or 5)
+    end
+end)
+-- ===================================================
+-- SMART PROGRESSION FLOW BACKEND LOOP
+-- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")

@@ -127,7 +127,7 @@ task.spawn(function()
                 ping = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
             end)
             
-            local currentAct = getgenv().AutoProgression and "<font color='#00FF88'>Auto Progression Active</font>" or "<font color='#FF4444'>Idle / Stopped</font>"
+            local currentAct = getgenv().CurrentActivityText or "<font color='#FF4444'>Idle / Stopped</font>"
             local currFloor = "0"
             local highFloor = "0"
             local reqFloorVal = "0"
@@ -153,6 +153,12 @@ task.spawn(function()
                         highFloor = tostring(DataController.towerBest() or 0)
                     elseif type(DataController.towerBest) == "number" then
                         highFloor = tostring(DataController.towerBest)
+                    end
+
+                    if type(DataController.floor) == "function" then
+                        currFloor = tostring(DataController.floor() or 0)
+                    elseif type(DataController.floor) == "number" then
+                        currFloor = tostring(DataController.floor)
                     end
                 end
 
@@ -203,6 +209,7 @@ task.spawn(function()
         end
     end)
 end)
+
 -- ===================================================
 -- TAB 2: FARMING CONTROLS
 -- ===================================================
@@ -216,6 +223,7 @@ ProgFarmSection:AddToggle("AutoProgression", {
     Callback = function(Value)
         getgenv().AutoProgression = Value
         if Value then
+            getgenv().CurrentActivityText = "<font color='#00FF88'>Starting Auto Progression...</font>"
             task.spawn(function()
                 local ReplicatedStorage = game:GetService("ReplicatedStorage")
                 local Players = game:GetService("Players")
@@ -260,6 +268,7 @@ ProgFarmSection:AddToggle("AutoProgression", {
                         
                         if towerBest < reqFloor then
                             if not isInTower then
+                                getgenv().CurrentActivityText = "<font color='#00E5FF'>Entering Tower (Floor " .. tostring(towerBest) .. ")...</font>"
                                 local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
                                 if elevatorRemote then
                                     pcall(function()
@@ -271,8 +280,11 @@ ProgFarmSection:AddToggle("AutoProgression", {
                                 local startRemote = Remotes:FindFirstChild("TowerStart")
                                 if startRemote then pcall(function() startRemote:InvokeServer() end) end
                                 task.wait(getgenv().TowerDelay or 1)
+                            else
+                                getgenv().CurrentActivityText = "<font color='#FFD700'>Farming Inside Tower...</font>"
                             end
                         else
+                            getgenv().CurrentActivityText = "<font color='#FF4444'>Goal Reached! Retreating & Rebirthing...</font>"
                             pcall(function()
                                 local retreatRemote = Remotes:FindFirstChild("TowerSurrender") or Remotes:FindFirstChild("Retreat") or Remotes:FindFirstChild("TowerRetreat")
                                 if retreatRemote then
@@ -295,6 +307,8 @@ ProgFarmSection:AddToggle("AutoProgression", {
                     task.wait(2)
                 end
             end)
+        else
+            getgenv().CurrentActivityText = "<font color='#FF4444'>Idle / Stopped</font>"
         end
     end
 })

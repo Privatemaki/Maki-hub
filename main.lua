@@ -1,10 +1,10 @@
+-- ===================================================
+-- PART 1: WINDOW INITIALIZATION & UI SETUP
+-- ===================================================
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- ===================================================
--- MAIN WINDOW CREATION
--- ===================================================
 local Window = Fluent:CreateWindow({
     Title = "MAKI HUB",
     SubTitle = "v1.0",
@@ -15,9 +15,6 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.End
 })
 
--- ===================================================
--- MOBILE FLOATING TOGGLE BUTTON (75x75 CIRCLE)
--- ===================================================
 local ToggleGui = Instance.new("ScreenGui")
 ToggleGui.Name = "MakiHubMobileToggle"
 ToggleGui.Parent = (gethui and gethui()) or game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
@@ -63,9 +60,6 @@ local function FixRichText(paragraphObj)
     end)
 end
 
--- ===================================================
--- TABS CREATION
--- ===================================================
 local Tabs = {
     Info = Window:AddTab({ Title = "Info", Icon = "info" }),
     Farming = Window:AddTab({ Title = "Farming", Icon = "sprout" }),
@@ -74,9 +68,8 @@ local Tabs = {
 
 local Options = Fluent.Options
 -- ===================================================
--- TAB 1: PROGRESSION STATUS & PERFORMANCE (REAL-TIME)
+-- PART 2: INFO TAB & REAL-TIME LOOP
 -- ===================================================
-
 local ProgSection = Tabs.Info:AddSection("Progression Status")
 
 local MainProgPara = ProgSection:AddParagraph({
@@ -94,16 +87,12 @@ local MainProgPara = ProgSection:AddParagraph({
 FixRichText(MainProgPara)
 
 local SysSection = Tabs.Info:AddSection("Performance Monitor")
-
 local SysPara = SysSection:AddParagraph({
     Title = "Live System Metrics",
     Content = "\n- <b>FPS</b>       :  <font color='#FFD700'>Calculating...</font>\n\n- <b>Ping</b>      :  <font color='#00E5FF'>Calculating...</font>\n\n- <b>Executor</b>  :  Calculating..."
 })
 FixRichText(SysPara)
 
--- ===================================================
--- PART 1: REAL-TIME INFO & PERFORMANCE LOOP
--- ===================================================
 task.spawn(function()
     local RunService = game:GetService("RunService")
     local StatsService = game:GetService("Stats")
@@ -118,7 +107,6 @@ task.spawn(function()
     RunService.RenderStepped:Connect(function()
         frameCount = frameCount + 1
         local now = tick()
-        
         if now - lastUpdate >= 1 then
             currentFPS = math.floor(frameCount / (now - lastUpdate))
             frameCount = 0
@@ -139,7 +127,6 @@ task.spawn(function()
             local minFeederLvl, maxFeederLvl = 99, 0
 
             pcall(function()
-                -- Ligtas na pagkuha ng Current Floor gamit ang Arena attribute
                 local currentPlot = LocalPlayer:GetAttribute("Plot")
                 if currentPlot ~= nil then
                     local arenasFolder = workspace:FindFirstChild("Arenas")
@@ -173,7 +160,6 @@ task.spawn(function()
                 if playerScripts then
                     local DataController = require(playerScripts.Core.Data.DataController)
                     local RebirthBonus = require(ReplicatedStorage.Core.Progression.RebirthBonus)
-                    
                     local currentRebirths = 0
                     if DataController.rebirth then
                         local res = DataController.rebirth()
@@ -235,8 +221,9 @@ task.spawn(function()
         end
     end)
 end)
-
--- SECTION 2: GENERAL FARM TOGGLES
+-- ===================================================
+-- PART 3: GENERAL FARM TOGGLES (EGGS & COOP)
+-- ===================================================
 local MainFarmSection = Tabs.Farming:AddSection("🚜 General Farm Toggles")
 
 getgenv().AutoOpenAll = false
@@ -344,7 +331,6 @@ MainFarmSection:AddToggle("AutoCoop", {
                     local success, err = pcall(function()
                         local coopLevel = 1 
                         local coopsFolder = workspace:FindFirstChild("Coops")
-                        
                         if coopsFolder then
                             local myCoopUI = coopsFolder:FindFirstChild("CoopUI")
                             if myCoopUI then
@@ -384,7 +370,9 @@ MainFarmSection:AddToggle("AutoCoop", {
         end
     end
 })
-
+-- ===================================================
+-- PART 4: FEEDERS UPGRADE & AUTO PROGRESSION SECTION
+-- ===================================================
 getgenv().AutoUpgradeToggleState = false
 MainFarmSection:AddToggle("AutoUpgradeToggle", { 
     Title = "Auto Buy Feeders & Upgrade", 
@@ -475,51 +463,30 @@ MainFarmSection:AddToggle("AutoUpgradeToggle", {
         end
     end
 })
--- ===================================================
--- PART 2: FARMING TAB & AUTO PROGRESSION TOGGLES
--- ===================================================
-if FarmingTab then
-    local FarmingSection = FarmingTab:AddSection("Auto Progression & Farming")
 
-    FarmingSection:AddToggle({
-        Name = "Auto Progression (Tower/Rebirth)",
-        Default = false,
-        Callback = function(Value)
-            getgenv().AutoProgression = Value
-            if Value then
-                getgenv().CurrentActivityText = "<font color='#00FF88'>Auto Progression Active...</font>"
-            else
-                getgenv().CurrentActivityText = "<font color='#FF4444'>Idle / Stopped</font>"
-            end
+local AutoProgSection = Tabs.Farming:AddSection("Auto Progression & Farming")
+
+AutoProgSection:AddToggle("AutoProgressionToggle", {
+    Title = "Auto Progression (Tower/Rebirth)",
+    Default = false,
+    Callback = function(Value)
+        getgenv().AutoProgression = Value
+        if Value then
+            getgenv().CurrentActivityText = "<font color='#00FF88'>Auto Progression Active...</font>"
+        else
+            getgenv().CurrentActivityText = "<font color='#FF4444'>Idle / Stopped</font>"
         end
-    })
-
-    FarmingSection:AddToggle({
-        Name = "Auto Open All Eggs",
-        Default = false,
-        Callback = function(Value)
-            getgenv().AutoOpenEggs = Value
-        end
-    })
-
-    FarmingSection:AddToggle({
-        Name = "Auto Collect Coop Eggs",
-        Default = false,
-        Callback = function(Value)
-            getgenv().AutoCollectEggs = Value
-        end
-    })
-end
-
+    end
+})
 -- ===================================================
--- PART 3: AUTO PROGRESSION & REBIRTH LOGIC (FIXED)
+-- PART 5: AUTO PROGRESSION LOGIC & FARMING CONFIG
 -- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
 
-    while task.shout and task.wait(1) do
+    while task.wait(1) do
         if getgenv().AutoProgression then
             pcall(function()
                 local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
@@ -541,7 +508,6 @@ task.spawn(function()
                         towerBestVal = DataController.towerBest
                     end
 
-                    -- Hindi na hahayaang lumagpas nang sobra; i-trigger ang retreat at rebirth kapag naabot na ang target
                     if towerBestVal >= reqFloor then
                         getgenv().CurrentActivityText = "<font color='#FFD700'>Goal Reached! Retreating & Rebirthing...</font>"
                         
@@ -572,7 +538,6 @@ task.spawn(function()
     end
 end)
 
--- SECTION 3: FARMING CONFIG
 local ConfigFarmSection = Tabs.Farming:AddSection("⚙️ Farming Config")
 
 ConfigFarmSection:AddInput("FloorDelay", {
@@ -606,7 +571,7 @@ ConfigFarmSection:AddInput("EggDelay", {
 ConfigFarmSection:AddDropdown("TargetUpgradeLevel", {
     Title = "Target Level (Auto Upgrade Generator)",
     Values = {"10", "15", "20", "25", "27", "30", "35", "40"},
-    Default = 5,
+    Default = "27",
     Multi = false,
     Callback = function(Value)
         local num = tonumber(Value)
@@ -615,9 +580,8 @@ ConfigFarmSection:AddDropdown("TargetUpgradeLevel", {
         end
     end
 })
-
 -- ===================================================
--- AUTO CLOSE TELEMETRY & OFFERS
+-- PART 6: TELEMETRY, SETTINGS, & SAVE MANAGER
 -- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -637,9 +601,6 @@ task.spawn(function()
     end
 end)
 
--- ===================================================
--- TAB 3: SETTINGS
--- ===================================================
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 

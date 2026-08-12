@@ -72,7 +72,7 @@ local Tabs = {
 local Options = Fluent.Options
 
 -- ===================================================
--- TABS & SECTIONS SETUP
+-- TAB 1: INFO
 -- ===================================================
 local ProgSection = Tabs.Info:AddSection("Progression Status")
 local MainProgPara = ProgSection:AddParagraph({
@@ -83,13 +83,156 @@ local MainProgPara = ProgSection:AddParagraph({
               "- <b>Highest Floor</b>     :  <font color='#FFD700'>0</font>\n\n" ..
               "- <b>Requirements</b>      :  <font color='#00FF88'>Checking...</font>\n\n" ..
               "--------------------------------------------------\n\n" ..
-              "- <b>Coop Level</b>        :  <font color='#00FF88'>Level 1</font>\n\n" ..
-              "- <b>Generator Level</b>   :  <font color='#00FF88'>Level 0</font>\n\n" ..
-              "- <b>Feeders Status</b>    :  <font color='#00E5FF'>Scanning...</font>"
+              "- <b>Coop Level</b>        :  <font color='#00FF88'>Synced</font>\n\n" ..
+              "- <b>Generator Level</b>   :  <font color='#00FF88'>Synced</font>\n\n" ..
+              "- <b>Feeders Status</b>    :  <font color='#00E5FF'>Active</font>"
 })
 FixRichText(MainProgPara)
 
--- LIVE FARM OVERVIEW UPDATE LOOP (WITH REAL COOP & GENERATOR LEVEL SCANNER)
+local SysSection = Tabs.Info:AddSection("Performance Monitor")
+local SysPara = SysSection:AddParagraph({
+    Title = "Live System Metrics",
+    Content = "\n- <b>FPS</b>       :  <font color='#FFD700'>Calculating...</font>\n\n- <b>Ping</b>      :  <font color='#00E5FF'>Calculating...</font>\n\n- <b>Executor</b>  :  Calculating..."
+})
+FixRichText(SysPara)
+
+local RunService = game:GetService("RunService")
+local StatsService = game:GetService("Stats")
+local lastUpdate = tick()
+local frameCount = 0
+local currentFPS = 60
+
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local now = tick()
+    if now - lastUpdate >= 1 then
+        currentFPS = math.floor(frameCount / (now - lastUpdate))
+        frameCount = 0
+        lastUpdate = now
+        local ping = 0
+        pcall(function()
+            ping = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
+        end)
+        SysPara:SetDesc(
+            "\n- <b>FPS</b>       :  <font color='#FFD700'>" .. tostring(currentFPS) .. " FPS</font>\n\n" ..
+            "- <b>Ping</b>      :  <font color='#00E5FF'>" .. tostring(ping) .. " ms</font>\n\n" ..
+            "- <b>Executor</b>  :  " .. (identifyexecutor and identifyexecutor() or "Unknown Executor")
+        )
+    end
+end)
+
+-- ===================================================
+-- TAB 2: FARMING (LEFT SIDE: TOGGLES | RIGHT SIDE: CONFIGS)
+-- ===================================================
+local LeftFarming = Tabs.Farming:AddSection("🎯 Auto Farming Toggles")
+
+LeftFarming:AddToggle("AutoProgression", { 
+    Title = "Auto Tower / Rebirth", 
+    Default = false,
+    Callback = function(Value) getgenv().AutoProgression = Value end
+})
+
+LeftFarming:AddToggle("ExpandCoop", { 
+    Title = "Expand Coop", 
+    Default = false,
+    Callback = function(Value) getgenv().ExpandCoop = Value end
+})
+
+LeftFarming:AddToggle("BuyGenerator", { 
+    Title = "Buy Generator", 
+    Default = false,
+    Callback = function(Value) getgenv().BuyGenerator = Value end
+})
+
+LeftFarming:AddToggle("UpgradeGenerator", { 
+    Title = "Upgrade Generator", 
+    Default = false,
+    Callback = function(Value) getgenv().UpgradeGenerator = Value end
+})
+
+LeftFarming:AddToggle("UpgradeRecycler", { 
+    Title = "Upgrade Recycler", 
+    Default = false,
+    Callback = function(Value) getgenv().UpgradeRecycler = Value end
+})
+
+LeftFarming:AddToggle("AutoCollectEgg", { 
+    Title = "Auto Collect Egg", 
+    Default = false,
+    Callback = function(Value) getgenv().AutoCollectEgg = Value end
+})
+
+local RightFarming = Tabs.Farming:AddSection("⚙️ Farming Configurations")
+
+RightFarming:AddInput("TowerDelay", {
+    Title = "Auto Tower Delay (Seconds)",
+    Default = "1",
+    Placeholder = "e.g. 1, 2",
+    Numeric = true,
+    Finished = true,
+    Callback = function(Value) getgenv().TowerDelay = tonumber(Value) or 1 end
+})
+
+RightFarming:AddInput("ExpandTargetLevel", {
+    Title = "Expand Target Level",
+    Default = "5",
+    Placeholder = "e.g. 5, 10",
+    Numeric = true,
+    Finished = true,
+    Callback = function(Value) getgenv().ExpandTargetLevel = tonumber(Value) or 5 end
+})
+
+RightFarming:AddInput("AutoBuyGenInput", {
+    Title = "Auto Buy Generator Amount/Delay",
+    Default = "5",
+    Placeholder = "e.g. 5",
+    Numeric = true,
+    Finished = true,
+    Callback = function(Value) getgenv().AutoBuyGenInput = Value end
+})
+
+RightFarming:AddDropdown("UpgradeGenTarget", {
+    Title = "Upgrade Generator Target Level",
+    Values = {"5", "10", "15", "20", "25", "30"},
+    Default = "10",
+    Multi = false,
+    Callback = function(Value) getgenv().UpgradeGenTarget = tonumber(Value) or 10 end
+})
+
+RightFarming:AddDropdown("WalkMethod", {
+    Title = "Walk Method",
+    Values = {"Walk", "Teleport"},
+    Default = "Walk",
+    Multi = false,
+    Callback = function(Value) getgenv().WalkMethod = Value end
+})
+
+RightFarming:AddDropdown("AutoMethod", {
+    Title = "Auto Method",
+    Values = {"Click", "Auto"},
+    Default = "Auto",
+    Multi = false,
+    Callback = function(Value) getgenv().AutoMethod = Value end
+})
+
+RightFarming:AddDropdown("UpgradeRecyclerTarget", {
+    Title = "Upgrade Recycler Target Level",
+    Values = {"5", "10", "15", "20", "25", "30"},
+    Default = "10",
+    Multi = false,
+    Callback = function(Value) getgenv().UpgradeRecyclerTarget = tonumber(Value) or 10 end
+})
+
+RightFarming:AddDropdown("CollectEggMethod", {
+    Title = "Auto Collect Egg Method",
+    Values = {"Teleport", "Walk"},
+    Default = "Teleport",
+    Multi = false,
+    Callback = function(Value) getgenv().CollectEggMethod = Value end
+})
+-- ===================================================
+-- BACKEND LOOPS & CORE FUNCTIONS
+-- ===================================================
 task.spawn(function()
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
@@ -111,7 +254,6 @@ task.spawn(function()
             end
             
             local reqFloor = RebirthBonus.requirementFloor(currentRebirths)
-            
             local towerBest = 0
             if type(DataController.towerBest) == "function" then
                 local sVal, rVal = pcall(DataController.towerBest)
@@ -133,36 +275,7 @@ task.spawn(function()
                 end
             end
             
-            local coopLevel = 1
-            local activeFeedersCount = 0
-            local coopsFolder = workspace:FindFirstChild("Coops")
-            if coopsFolder then
-                local myCoopUI = coopsFolder:FindFirstChild("CoopUI")
-                if myCoopUI then
-                    for _, child in ipairs(myCoopUI:GetChildren()) do
-                        if child.Name == "Feeder" then
-                            activeFeedersCount = activeFeedersCount + 1
-                        end
-                        local sGui = child:FindFirstChildOfClass("SurfaceGui")
-                        if sGui then
-                            for _, desc in ipairs(sGui:GetDescendants()) do
-                                if desc:IsA("TextLabel") then
-                                    local txt = desc.Text or ""
-                                    if txt:match("Nv%.(%d+)") then
-                                        local lvl = tonumber(txt:match("Nv%.(%d+)"))
-                                        if lvl and lvl >= 1 and lvl <= 5 then
-                                            coopLevel = lvl
-                                            break
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-            
-            local activityText = getgenv().AutoProgression and "<font color='#00FF88'>[ACTIVE] Progression Running</font>" or "<font color='#FF5555'>[IDLE] Paused</font>"
+            local activityText = getgenv().AutoProgression and "<font color='#00FF88'>[ACTIVE] Running</font>" or "<font color='#FF5555'>[IDLE] Paused</font>"
             
             MainProgPara:SetDesc(
                 "\n" ..
@@ -171,327 +284,189 @@ task.spawn(function()
                 "- <b>Highest Floor</b>     :  <font color='#FFD700'>" .. tostring(towerBest) .. "</font>\n\n" ..
                 "- <b>Requirements</b>      :  <font color='#00FF88'>Floor " .. tostring(reqFloor) .. "</font>\n\n" ..
                 "--------------------------------------------------\n\n" ..
-                "- <b>Coop Level</b>        :  <font color='#00FF88'>Level " .. tostring(coopLevel) .. "</font>\n\n" ..
-                "- <b>Generator Level</b>   :  <font color='#00FF88'>" .. tostring(activeFeedersCount) .. " Units Active</font>\n\n" ..
-                "- <b>Feeders Status</b>    :  <font color='#00E5FF'>Target: Level " .. tostring(getgenv().AutoUpgradeFeederTarget or 27) .. "</font>"
+                "- <b>Coop Level</b>        :  <font color='#00FF88'>Synced</font>\n\n" ..
+                "- <b>Generator Level</b>   :  <font color='#00FF88'>Synced</font>\n\n" ..
+                "- <b>Feeders Status</b>    :  <font color='#00E5FF'>Active</font>"
             )
         end)
         task.wait(1)
     end
 end)
--- ===================================================
--- FARMING TAB & FEATURES
--- ===================================================
-local HatchGroup = Tabs.Farming:AddSection("🥚 Hatch Config")
-HatchGroup:AddToggle("AutoOpenAllToggle", {
-    Title = "Auto Open All Eggs",
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoOpenAll = Value
-        if Value then
-            task.spawn(function()
-                local HatchEvent = game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("HatchEgg")
-                local eggList = {"barn", "feed", "storm", "crown", "golden", "ordnance", "arena", "fang", "charm", "meme", "bloom", "diner", "haunt", "circuit", "void", "rival", "hotEgg"}
-                while getgenv().AutoOpenAll do
-                    for _, eggName in ipairs(eggList) do
-                        if not getgenv().AutoOpenAll then break end
-                        pcall(function() HatchEvent:InvokeServer(eggName) end)
-                        task.wait(0.1)
-                    end
-                    task.wait(0.2)
+
+-- GENERAL FARM BACKEND ACTIONS LOOP
+task.spawn(function()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+    
+    while true do
+        pcall(function()
+            if getgenv().AutoCollectEgg then
+                local collectRemote = Remotes and (Remotes:FindFirstChild("CollectEggs") or Remotes:FindFirstChild("ClaimEggs"))
+                if collectRemote then
+                    if collectRemote:IsA("RemoteFunction") then collectRemote:InvokeServer() else collectRemote:FireServer() end
                 end
-            end)
-        end
-    end
-})
-
-HatchGroup:AddInput("EggDelayInput", {
-    Title = "Egg Collect Delay (s)",
-    Default = "5",
-    Numeric = true,
-    Finished = true,
-    Callback = function(Value)
-        local num = tonumber(Value)
-        if num and num >= 0 then
-            getgenv().EggSpawnDelay = num
-        end
-    end
-})
-
-HatchGroup:AddToggle("AutoCollectEggsToggle", {
-    Title = "Auto Collect Coop Eggs (Timer)",
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoCollectMyCoopOnly = Value
-        if Value then
-            task.spawn(function()
-                local Players = game:GetService("Players")
-                local LocalPlayer = Players.LocalPlayer
-                while getgenv().AutoCollectMyCoopOnly do
-                    local character = LocalPlayer.Character
-                    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-                    if rootPart then
-                        local coopsFolder = workspace:FindFirstChild("Coops")
-                        local myCoop = nil
-                        if coopsFolder then
-                            local closestDist = math.huge
-                            for _, coop in ipairs(coopsFolder:GetChildren()) do
-                                local coopPart = coop:IsA("Model") and coop.PrimaryPart or coop:FindFirstChildWhichIsA("BasePart")
-                                if coopPart then
-                                    local dist = (rootPart.Position - coopPart.Position).Magnitude
-                                    if dist < closestDist and dist < 40 then 
-                                        closestDist = dist
-                                        myCoop = coop
-                                    end
-                                end
-                            end
-                            if myCoop then
-                                local nestEggsFolder = workspace:FindFirstChild("NestEggs")
-                                local hasEggToCollect = false
-                                if nestEggsFolder and #nestEggsFolder:GetChildren() > 0 then
-                                    for _, egg in ipairs(nestEggsFolder:GetChildren()) do
-                                        local eggPart = egg:IsA("Model") and egg.PrimaryPart or (egg:IsA("BasePart") and egg or nil)
-                                        local coopCenter = myCoop:IsA("Model") and myCoop.PrimaryPart or myCoop:FindFirstChildWhichIsA("BasePart")
-                                        if eggPart and coopCenter and (eggPart.Position - coopCenter.Position).Magnitude <= 20 then
-                                            hasEggToCollect = true
-                                            break
-                                        end
-                                    end
-                                end
-                                if hasEggToCollect then
-                                    task.wait(getgenv().EggSpawnDelay or 5)
-                                    for _, egg in ipairs(nestEggsFolder:GetChildren()) do
-                                        if not getgenv().AutoCollectMyCoopOnly then break end
-                                        local eggPart = egg:IsA("Model") and egg.PrimaryPart or (egg:IsA("BasePart") and egg or nil)
-                                        local coopCenter = myCoop:IsA("Model") and myCoop.PrimaryPart or myCoop:FindFirstChildWhichIsA("BasePart")
-                                        if eggPart and coopCenter and (eggPart.Position - coopCenter.Position).Magnitude <= 20 then
-                                            rootPart.CFrame = eggPart.CFrame + Vector3.new(0, 2, 0)
-                                            task.wait(0.3)
-                                            break
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                        task.wait(1)
-                    else
-                        task.wait(1)
-                    end
+            end
+            
+            if getgenv().BuyGenerator then
+                local expandRemote = Remotes and (Remotes:FindFirstChild("BuyGenerator") or Remotes:FindFirstChild("ExpandPlot"))
+                if expandRemote then
+                    if expandRemote:IsA("RemoteFunction") then expandRemote:InvokeServer() else expandRemote:FireServer() end
                 end
-            end)
-        end
-    end
-})
-
-local BuyExpandGroup = Tabs.Farming:AddSection("🚜 Buy Feeders & Expand & Upgrade")
-
-getgenv().UltimateAutoCoop = false
-getgenv().BuyGeneratorDelay = 3
-getgenv().AutoUpgradeFeederTarget = 27
-getgenv().AutoUpgradeToggleState = false
-getgenv().TargetCoopExpandLevel = 5 -- Default max level
-
-BuyExpandGroup:AddToggle("AutoUpgradeToggle", {
-    Title = "Auto Upgrade Feeder (Obsidian Logic)",
-    Default = false,
-    Callback = function(Value)
-        getgenv().AutoUpgradeToggleState = Value
-        if Value then
-            task.spawn(function()
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                local UpgradeGeneratorRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UpgradeGenerator")
-
-                while getgenv().AutoUpgradeToggleState do
-                    local coopsFolder = workspace:FindFirstChild("Coops")
-                    if coopsFolder then
-                        local myCoopUI = coopsFolder:FindFirstChild("CoopUI")
-                        if myCoopUI then
-                            local children = myCoopUI:GetChildren()
-                            local index = 1
-                            local TARGET_LEVEL = getgenv().AutoUpgradeFeederTarget or 27
-                            
-                            for _, child in ipairs(children) do
-                                if not getgenv().AutoUpgradeToggleState then break end
-                                local currentLevel = child:GetAttribute("Level")
-                                
-                                if currentLevel then
-                                    if currentLevel < TARGET_LEVEL then
-                                        pcall(function()
-                                            UpgradeGeneratorRemote:InvokeServer(index)
-                                        end)
-                                        task.wait(0.5)
-                                        break 
-                                    end
-                                    index = index + 1
-                                end
-                            end
-                        end
-                    end
-                    task.wait(0.7)
+            end
+            
+            if getgenv().UpgradeGenerator then
+                local upgradeGen = Remotes and Remotes:FindFirstChild("UpgradeGenerator")
+                if upgradeGen then
+                    local target = getgenv().UpgradeGenTarget or 10
+                    if upgradeGen:IsA("RemoteFunction") then upgradeGen:InvokeServer(target) else upgradeGen:FireServer(target) end
                 end
-            end)
-        end
+            end
+            
+            if getgenv().UpgradeRecycler then
+                local upgradeRec = Remotes and Remotes:FindFirstChild("UpgradeRecycler")
+                if upgradeRec then
+                    local target = getgenv().UpgradeRecyclerTarget or 10
+                    if upgradeRec:IsA("RemoteFunction") then upgradeRec:InvokeServer(target) else upgradeRec:FireServer(target) end
+                end
+            end
+        end)
+        task.wait(1)
     end
-})
+end)
 
-BuyExpandGroup:AddDropdown("AutoUpgradeTargetDropdown", {
-    Title = "Feeder Target Level",
-    Values = { "10", "15", "20", "25", "27", "30", "40", "50" },
-    Default = "27",
-    Multi = false,
-    Callback = function(Value)
-        local num = tonumber(Value)
-        if num then
-            getgenv().AutoUpgradeFeederTarget = num
-        end
-    end
-})
-
--- NEW: Target Coop Level Dropdown para sa pag-expand
-BuyExpandGroup:AddDropdown("TargetCoopExpandDropdown", {
-    Title = "Target Coop Expand Level",
-    Values = { "1", "2", "3", "4", "5" },
-    Default = "5",
-    Multi = false,
-    Callback = function(Value)
-        local num = tonumber(Value)
-        if num then
-            getgenv().TargetCoopExpandLevel = num
-        end
-    end
-})
-
-BuyExpandGroup:AddDropdown("BuyGeneratorDelayDropdown", {
-    Title = "Delay to Buy Generator",
-    Values = { "0.5s", "1s", "2s", "3s", "5s" },
-    Default = "3s",
-    Multi = false,
-    Callback = function(Value)
-        local numStr = Value:gsub("s", "")
-        getgenv().BuyGeneratorDelay = tonumber(numStr) or 3
-    end
-})
-
-BuyExpandGroup:AddToggle("UltimateAutoCoopToggle", {
-    Title = "Auto Buy Feeders & Accurate Expand",
-    Default = false,
-    Callback = function(Value)
-        getgenv().UltimateAutoCoop = Value
-        if Value then
-            task.spawn(function()
-                local Players = game:GetService("Players")
-                local ReplicatedStorage = game:GetService("ReplicatedStorage")
-                local LocalPlayer = Players.LocalPlayer
+-- SMART PROGRESSION LOOP
+task.spawn(function()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+    
+    while true do
+        if getgenv().AutoProgression then
+            pcall(function()
+                local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+                if not playerScripts then return end
                 
-                local BuyEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BuyGenerator")
-                local ExpandEvent = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ExpandCoop")
-
-                while getgenv().UltimateAutoCoop do
-                    local success, err = pcall(function()
-                        local coopLevel = 1 
-                        local coopsFolder = workspace:FindFirstChild("Coops")
-                        
-                        if coopsFolder then
-                            local myCoopUI = coopsFolder:FindFirstChild("CoopUI")
-                            if myCoopUI then
-                                for _, child in ipairs(myCoopUI:GetChildren()) do
-                                    local sGui = child:FindFirstChildOfClass("SurfaceGui")
-                                    if sGui then
-                                        for _, desc in ipairs(sGui:GetDescendants()) do
-                                            if desc:IsA("TextLabel") then
-                                                local txt = desc.Text or ""
-                                                if txt:match("Nv%.(%d+)") then
-                                                    local lvl = tonumber(txt:match("Nv%.(%d+)"))
-                                                    if lvl and lvl >= 1 and lvl <= 5 then
-                                                        coopLevel = lvl
-                                                        break
-                                                    end
-                                                end
-                                            end
-                                        end
-                                    end
-                                    if coopLevel > 1 then break end
-                                end
-                            end
+                local DataController = require(playerScripts.Core.Data.DataController)
+                local RebirthBonus = require(ReplicatedStorage.Core.Progression.RebirthBonus)
+                
+                local currentRebirths = 0
+                if DataController.rebirth then
+                    local res = DataController.rebirth()
+                    if type(res) == "table" then currentRebirths = res.count or 0
+                    else currentRebirths = tonumber(res) or 0 end
+                end
+                
+                local reqFloor = RebirthBonus.requirementFloor(currentRebirths)
+                local towerBest = 0
+                if type(DataController.towerBest) == "function" then
+                    local sVal, rVal = pcall(DataController.towerBest)
+                    if sVal then towerBest = tonumber(rVal) or 0 end
+                elseif type(DataController.towerBest) == "number" then
+                    towerBest = DataController.towerBest
+                end
+                
+                local liveFloor = 0
+                local currentPlot = LocalPlayer:GetAttribute("Plot")
+                if currentPlot ~= nil then
+                    local arenasFolder = workspace:FindFirstChild("Arenas")
+                    if arenasFolder ~= nil then
+                        local arena = arenasFolder:FindFirstChild("Arena" .. tostring(currentPlot))
+                        if arena ~= nil then
+                            local f = arena:GetAttribute("TowerFloor")
+                            if f then liveFloor = tonumber(f) or 0 end
                         end
-
-                        -- Kung naabot na ng coop ang tinarget mong level sa dropdown, hindi na siya mag-e-expand pa lampas dun
-                        local userTargetCoop = getgenv().TargetCoopExpandLevel or 5
-                        if coopLevel >= userTargetCoop then
-                            task.wait(2)
-                            return
-                        end
-
-                        local maxAllowed = coopLevel + 1
-                        if maxAllowed > 6 then maxAllowed = 6 end
-
-                        local currentFeederCount = 0
-                        if coopsFolder and coopsFolder:FindFirstChild("CoopUI") then
-                            for _, child in ipairs(coopsFolder.CoopUI:GetChildren()) do
-                                if child.Name == "Feeder" then
-                                    currentFeederCount = currentFeederCount + 1
-                                end
-                            end
-                        end
-
-                        if currentFeederCount >= maxAllowed then
-                            pcall(function()
-                                ExpandEvent:InvokeServer()
-                            end)
-                            task.wait(1) -- Walang delay na mabigat, accurate at mabilis agad pagka-expand
-                            return
-                        end
-
-                        local playerMoney = 0
-                        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-                        if playerGui then
-                            local hud = playerGui:FindFirstChild("HUD")
-                            local moneyFolder = hud and hud:FindFirstChild("Frame") and hud.Frame:FindFirstChild("money")
-                            
-                            if moneyFolder then
-                                local qFolder = moneyFolder:FindFirstChild("q")
-                                local numLabel = qFolder and qFolder:FindFirstChild("num")
-                                
-                                if numLabel and numLabel:IsA("TextLabel") then
-                                    local rawText = numLabel.Text:upper():gsub(",", "")
-                                    local multiplier = 1
-                                    
-                                    if rawText:find("K") then
-                                        multiplier = 1000
-                                        rawText = rawText:gsub("K", "")
-                                    elseif rawText:find("M") then
-                                        multiplier = 1000000
-                                        rawText = rawText:gsub("M", "")
-                                    elseif rawText:find("B") then
-                                        multiplier = 1000000000
-                                        rawText = rawText:gsub("B", "")
-                                    end
-                                    
-                                    playerMoney = (tonumber(rawText) or 0) * multiplier
-                                end
-                            end
-                        end
-
-                        if playerMoney < 1500 then
-                            task.wait(2)
-                            return
-                        end
-
-                        local targetSlot = currentFeederCount + 1
-                        pcall(function()
-                            BuyEvent:InvokeServer(targetSlot)
-                        end)
-                        
-                        task.wait(getgenv().BuyGeneratorDelay or 3)
-                    end)
-                    
-                    if not success then 
-                        task.wait(2) 
                     end
-                    
-                    task.wait(0.5)
+                end
+                
+                local where = "corral"
+                pcall(function()
+                    if playerScripts:FindFirstChild("Features") and playerScripts.Features:FindFirstChild("Chicken") then
+                        local chickenMode = playerScripts.Features.Chicken:FindFirstChild("ChickenMode")
+                        if chickenMode and chickenMode:FindFirstChild("where") then
+                            where = chickenMode.where()
+                        end
+                    end
+                end)
+                
+                local isInTower = (where == "campaign" or where == "tower")
+                
+                if (liveFloor > 0 and liveFloor < reqFloor) or (towerBest < reqFloor and not isInTower) then
+                    if not isInTower then
+                        local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
+                        if elevatorRemote then
+                            pcall(function()
+                                if elevatorRemote:IsA("RemoteFunction") then elevatorRemote:InvokeServer(towerBest)
+                                else elevatorRemote:FireServer(towerBest) end
+                            end)
+                        end
+                        task.wait(0.5)
+                        local startRemote = Remotes:FindFirstChild("TowerStart")
+                        if startRemote then pcall(function() startRemote:InvokeServer() end) end
+                        task.wait(getgenv().TowerDelay or 1)
+                    end
+                else
+                    pcall(function()
+                        local retreatRemote = Remotes:FindFirstChild("TowerSurrender") or Remotes:FindFirstChild("Retreat") or Remotes:FindFirstChild("TowerRetreat")
+                        if retreatRemote then
+                            if retreatRemote:IsA("RemoteFunction") then retreatRemote:InvokeServer()
+                            else retreatRemote:FireServer() end
+                        end
+                    end)
+                    task.wait(3)
+                    local rebirthRemote = Remotes:FindFirstChild("Rebirth")
+                    if rebirthRemote then
+                        pcall(function()
+                            if rebirthRemote:IsA("RemoteFunction") then rebirthRemote:InvokeServer()
+                            else rebirthRemote:FireServer() end
+                        end)
+                    end
+                    task.wait(4)
                 end
             end)
         end
+        task.wait(2)
     end
+end)
+
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+InterfaceManager:SetFolder("MakiHubFluent")
+SaveManager:SetFolder("MakiHubFluent/configs")
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+local DeleteSection = Tabs.Settings:AddSection("🗑️ Config Management")
+DeleteSection:AddButton({
+    Title = "Delete Current Config",
+    Description = "Permanently deletes the active configuration file.",
+    Callback = function()
+        pcall(function()
+            local folder = "MakiHubFluent/configs/"
+            local configName = Options.SaveManager_ConfigList and Options.SaveManager_ConfigList.Value
+            if configName and configName ~= "" then
+                local fullPath = folder .. configName .. ".json"
+                if delfile and isfile and isfile(fullPath) then
+                    delfile(fullPath)
+                    Fluent:Notify({ Title = "Success", Content = "Na-delete na ang config: " .. configName, Duration = 3 })
+                else
+                    if delfile then pcall(function() delfile(folder .. configName) end) end
+                    Fluent:Notify({ Title = "Success", Content = "Triny burahin ang config.", Duration = 3 })
+                end
+            else
+                Fluent:Notify({ Title = "Error", Content = "Walang napiling config sa dropdown para burahin.", Duration = 3 })
+            end
+        end)
+    end
+})
+
+Window:SelectTab(1)
+SaveManager:LoadAutoloadConfig()
+
+Fluent:Notify({
+    Title = "MAKI HUB v1.0",
+    Content = "Script Loaded Successfully!",
+    Duration = 4
 })

@@ -20,15 +20,12 @@ local Tabs = {
 getgenv().MakiHubWindow = Window
 getgenv().MakiHubTabs = Tabs
 
--- ===================================================
--- GLOBAL VARIABLES
--- ===================================================
 getgenv().AutoProgression = false
 getgenv().TowerDelay = 1
 getgenv().ExpandCoop = false
-getgenv().ExpandTargetLevel = 5
+getgenv().ExpandTargetLevel = 2
 getgenv().BuyGenerator = false
-getgenv().AutoBuyGenInput = 5
+getgenv().AutoBuyGenTarget = 6
 getgenv().UpgradeGenerator = false
 getgenv().UpgradeGenTarget = 10
 getgenv().UpgradeGeneratorMethod = "Teleport"
@@ -37,9 +34,6 @@ getgenv().UpgradeRecyclerTarget = 10
 getgenv().AutoCollectEgg = false
 getgenv().CollectEggMethod = "Teleport"
 
--- ===================================================
--- TAB 1: INFO
--- ===================================================
 local InfoLeft = Tabs.Info:AddLeftGroupbox("Progression Status", "info")
 local LabelActivity = InfoLeft:AddLabel("Current Activity: Idle")
 local LabelCurrFloor = InfoLeft:AddLabel("Current Floor: 0")
@@ -54,7 +48,6 @@ local LabelFPS = InfoRight:AddLabel("FPS: Calculating...")
 InfoRight:AddLabel("Ping: Calculating...")
 InfoRight:AddLabel("Executor: " .. (identifyexecutor and identifyexecutor() or "Unknown"))
 
--- Live FPS & Stats Loop
 task.spawn(function()
     local RunService = game:GetService("RunService")
     local StatsService = game:GetService("Stats")
@@ -67,19 +60,12 @@ task.spawn(function()
             local currentFPS = math.floor(frameCount / (now - lastUpdate))
             frameCount = 0
             lastUpdate = now
-            local ping = 0
-            pcall(function()
-                ping = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
-            end)
             LabelFPS:SetText("FPS: " .. tostring(currentFPS))
         end
         RunService.RenderStepped:Wait()
     end
 end)
 
--- ===================================================
--- TAB 2: FARMING
--- ===================================================
 local BoxAutoTower = Tabs.Farming:AddLeftGroupbox("Auto Tower / Rebirth", "sword")
 BoxAutoTower:AddToggle("AutoProgressionToggle", {
     Text = "Enable Auto Tower",
@@ -102,10 +88,10 @@ BoxExpandCoop:AddToggle("ExpandCoopToggle", {
 })
 BoxExpandCoop:AddInput("ExpandTargetLevelInput", {
     Text = "Expand Target Level",
-    Default = "5",
+    Default = "2",
     Numeric = true,
     Finished = true,
-    Callback = function(Value) getgenv().ExpandTargetLevel = tonumber(Value) or 5 end
+    Callback = function(Value) getgenv().ExpandTargetLevel = tonumber(Value) or 2 end
 })
 
 local BoxGenerators = Tabs.Farming:AddRightGroupbox("Generator Management", "cpu")
@@ -114,12 +100,12 @@ BoxGenerators:AddToggle("BuyGeneratorToggle", {
     Default = false,
     Callback = function(Value) getgenv().BuyGenerator = Value end
 })
-BoxGenerators:AddInput("AutoBuyGenInput", {
-    Text = "Auto Buy Target",
-    Default = "5",
+BoxGenerators:AddInput("AutoBuyGenTargetInput", {
+    Text = "Target Generator Count (1-6)",
+    Default = "6",
     Numeric = true,
     Finished = true,
-    Callback = function(Value) getgenv().AutoBuyGenInput = tonumber(Value) or 5 end
+    Callback = function(Value) getgenv().AutoBuyGenTarget = tonumber(Value) or 6 end
 })
 
 BoxGenerators:AddDivider()
@@ -171,9 +157,6 @@ BoxRecyclerEggs:AddDropdown("CollectEggMethodDropdown", {
     Callback = function(Value) getgenv().CollectEggMethod = Value end
 })
 
--- ===================================================
--- AUTOMATION LOGIC LOOPS (REMOTES)
--- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
@@ -278,7 +261,6 @@ task.spawn(function()
     end
 end)
 
--- Auto Decline Tower Continue Prompt
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local remotesFolder = ReplicatedStorage:WaitForChild("Remotes", 5)
@@ -296,38 +278,137 @@ task.spawn(function()
     end
 end)
 
--- Secondary Farming Loop (Expand, Buy Gen, Upgrade Gen, Upgrade Recycler, Auto Collect Eggs)
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
     local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+    
     while true do
         if remotes then
             pcall(function()
-                -- Expand Coop
                 if getgenv().ExpandCoop then
-                    local expandRemote = remotes:FindFirstChild("ExpandCoop") or remotes:FindFirstChild("Expand")
-                    if expandRemote then
-                        if expandRemote:IsA("RemoteFunction") then expandRemote:InvokeServer() else expandRemote:FireServer() end
+                    local targetCoopLevel = tonumber(getgenv().ExpandTargetLevel) or 2
+                    local currentCoopLevel = 0
+                    
+                    pcall(function()
+                        local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+                        if playerScripts then
+                            local DataController = require(playerScripts.Core.Data.DataController)
+                            if DataController then
+                                local coopData = nil
+                                if type(DataController.coop) == "function" then
+                                    coopData = DataController.coop()
+                                elseif type(DataController.coop) == "table" then
+                                    coopData = DataController.coop
+                                elseif DataController.GetCoopData then
+                                    coopData = DataController.GetCoopData()
+                                end
+                                
+                                if type(coopData) == "table" then
+                                    currentCoopLevel = coopData.level or coopData.tier or coopData.count or 0
+                                elseif type(coopData) == "number" then
+                                    currentCoopLevel = coopData
+                                end
+                            end
+                        end
+                    end)
+                    
+                    if currentCoopLevel == 0 then
+                        pcall(function()
+                            local attr = LocalPlayer:GetAttribute("CoopLevel") or LocalPlayer:GetAttribute("CoopSize")
+                            if attr then currentCoopLevel = tonumber(attr) or 0 end
+                        end)
+                    end
+                    
+                    if currentCoopLevel < targetCoopLevel then
+                        local expandRemote = remotes:FindFirstChild("ExpandCoop") or remotes:FindFirstChild("Expand")
+                        if expandRemote then
+                            if expandRemote:IsA("RemoteFunction") then 
+                                expandRemote:InvokeServer() 
+                            else 
+                                expandRemote:FireServer() 
+                            end
+                        end
                     end
                 end
                 
-                -- Buy Generator
                 if getgenv().BuyGenerator then
-                    local genRemote = remotes:FindFirstChild("BuyGenerator") or remotes:FindFirstChild("GeneratorBuy")
-                    if genRemote then
-                        if genRemote:IsA("RemoteFunction") then genRemote:InvokeServer() else genRemote:FireServer() end
+                    local maxTarget = math.clamp(getgenv().AutoBuyGenTarget or 6, 1, 6)
+                    local currentCount = 0
+                    
+                    pcall(function()
+                        local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+                        if playerScripts then
+                            local DataController = require(playerScripts.Core.Data.DataController)
+                            if DataController then
+                                local genData = nil
+                                if type(DataController.generators) == "function" then
+                                    genData = DataController.generators()
+                                elseif type(DataController.generators) == "table" then
+                                    genData = DataController.generators
+                                elseif DataController.GetGeneratorData then
+                                    genData = DataController.GetGeneratorData()
+                                end
+                                
+                                if type(genData) == "table" then
+                                    local c = 0
+                                    for _, _ in pairs(genData) do
+                                        c = c + 1
+                                    end
+                                    currentCount = c
+                                end
+                            end
+                        end
+                    end)
+                    
+                    if currentCount == 0 then
+                        pcall(function()
+                            local currentPlot = LocalPlayer:GetAttribute("Plot")
+                            if currentPlot ~= nil then
+                                for _, obj in ipairs(workspace:GetDescendants()) do
+                                    if obj:IsA("Model") and obj.Name:lower():find("generator") then
+                                        if obj.Parent and obj.Parent.Name:lower():find(tostring(currentPlot)) then
+                                            currentCount = currentCount + 1
+                                        end
+                                    end
+                                end
+                            end
+                        end)
+                    end
+                    
+                    if currentCount < maxTarget then
+                        local genRemote = remotes:FindFirstChild("BuyGenerator") or remotes:FindFirstChild("GeneratorBuy") or remotes:FindFirstChild("BuyGen")
+                        if genRemote then
+                            local nextIndex = currentCount + 1
+                            if nextIndex <= maxTarget then
+                                if genRemote:IsA("RemoteFunction") then 
+                                    genRemote:InvokeServer(nextIndex) 
+                                else 
+                                    genRemote:FireServer(nextIndex) 
+                                end
+                            end
+                        end
                     end
                 end
                 
-                -- Upgrade Generator
                 if getgenv().UpgradeGenerator then
-                    local upGenRemote = remotes:FindFirstChild("UpgradeGenerator") or remotes:FindFirstChild("GeneratorUpgrade")
+                    local upGenRemote = remotes:FindFirstChild("UpgradeGenerator") or remotes:FindFirstChild("GeneratorUpgrade") or remotes:FindFirstChild("UpgradeGen")
                     if upGenRemote then
-                        if upGenRemote:IsA("RemoteFunction") then upGenRemote:InvokeServer() else upGenRemote:FireServer() end
+                        for i = 1, 6 do
+                            if not getgenv().UpgradeGenerator then break end
+                            pcall(function()
+                                if upGenRemote:IsA("RemoteFunction") then 
+                                    upGenRemote:InvokeServer(i) 
+                                else 
+                                    upGenRemote:FireServer(i) 
+                                end
+                            end)
+                            task.wait(0.15)
+                        end
                     end
                 end
                 
-                -- Upgrade Recycler
                 if getgenv().UpgradeRecycler then
                     local upRecRemote = remotes:FindFirstChild("UpgradeRecycler") or remotes:FindFirstChild("RecyclerUpgrade")
                     if upRecRemote then
@@ -335,7 +416,6 @@ task.spawn(function()
                     end
                 end
                 
-                -- Auto Collect Eggs
                 if getgenv().AutoCollectEgg then
                     local eggRemote = remotes:FindFirstChild("CollectEgg") or remotes:FindFirstChild("ClaimEggs") or remotes:FindFirstChild("EggCollect")
                     if eggRemote then
@@ -344,13 +424,10 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(2)
+        task.wait(1.5)
     end
 end)
 
--- ===================================================
--- TAB 3: SETTINGS
--- ===================================================
 local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Menu & Config Management", "settings")
 
 SettingsLeft:AddButton("Unload", function() Library:Unload() end)
@@ -362,9 +439,6 @@ SettingsLeft:AddButton("Auto Rejoin", function()
     ts:Teleport(game.PlaceId, p)
 end)
 
--- ===================================================
--- MANAGERS SETUP
--- ===================================================
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()

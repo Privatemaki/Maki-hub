@@ -388,7 +388,7 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- AUTO TOWER CONTINUE DECLINER (Cobalt Integration)
+-- AUTO TOWER CONTINUE DECLINER
 -- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -398,7 +398,6 @@ task.spawn(function()
 
     while true do
         pcall(function()
-            -- 1. Direktang i-fire ang Remote kung available
             local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
             if remotesFolder then
                 local declineEvent = remotesFolder:FindFirstChild("TowerContinueDecline")
@@ -407,7 +406,6 @@ task.spawn(function()
                 end
             end
 
-            -- 2. I-auto click din ang anumang UI elements na may kinalaman sa continue/decline/close
             if PlayerGui then
                 for _, desc in ipairs(PlayerGui:GetDescendants()) do
                     if desc:IsA("TextButton") or desc:IsA("ImageButton") then
@@ -432,11 +430,12 @@ task.spawn(function()
                 end
             end
         end)
-        task.wait(1) -- Sinusuri at pinipiga nito ang remote/UI bawat 1 segundo para mabilis masara pagka-talo
+        task.wait(1)
     end
 end)
+
 -- ===================================================
--- AUTO-ACTIVE AFK COOP GUARD (Background Loop)
+-- AUTO-ACTIVE AFK COOP GUARD
 -- ===================================================
 task.spawn(function()
     local Players = game:GetService("Players")
@@ -473,7 +472,6 @@ task.spawn(function()
         return nil
     end
 
-    print("--- AFK GUARD BACKGROUND LOADING... ---")
     task.wait(5)
     
     local baseCoopPosition = nil
@@ -510,7 +508,7 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- TAB 3: SETTINGS
+-- SETTINGS TAB
 -- ===================================================
 local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Menu & Config Management", "settings")
 

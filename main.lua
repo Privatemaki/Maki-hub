@@ -438,7 +438,7 @@ end)
 -- ===================================================
 -- AUTO-ACTIVE AFK COOP GUARD (Background Loop)
 -- ===================================================
-task.spawn(function`
+task.spawn(function
     local Players = game:GetService("Players")
     local Workspace = game:GetService("Workspace")
     local localPlayer = Players.LocalPlayer

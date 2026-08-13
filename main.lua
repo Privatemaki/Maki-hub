@@ -170,33 +170,15 @@ BoxRecyclerEggs:AddDropdown("CollectEggMethodDropdown", {
 -- AUTOMATION LOGIC LOOPS
 -- ===================================================
 
--- Tower & Rebirth Loop (with Auto-Close/Block Telemetry)
+-- Tower & Rebirth Loop
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
     local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
-    
-    local telemetryBlocked = false
 
     while true do
         if getgenv().AutoProgression and Remotes then
-            if not telemetryBlocked then
-                pcall(function()
-                    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-                        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                            local nameLower = obj.Name:lower()
-                            if nameLower:find("telemetry") or nameLower:find("analytics") or nameLower:find("errorreport") or nameLower:find("crashreport") then
-                                pcall(function()
-                                    obj.Name = "DisabledTelemetry"
-                                end)
-                            end
-                        end
-                    end
-                end)
-                telemetryBlocked = true
-            end
-
             pcall(function()
                 local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
                 if not playerScripts then return end
@@ -288,13 +270,12 @@ task.spawn(function()
             end)
         else
             LabelActivity:SetText("Current Activity: Idle")
-            telemetryBlocked = false
         end
         task.wait(2)
     end
 end)
 
--- Ultra-Fast, Multi-Threaded & Accurate Automation Loop
+-- Ultra-Fast Generator Upgrade Loop
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
@@ -316,7 +297,6 @@ task.spawn(function()
                     end)
                 end
                 
-                -- 1. EXPAND COOP LOGIC
                 if getgenv().ExpandCoop and coopData then
                     local targetLevel = tonumber(getgenv().ExpandTargetLevel) or 2
                     local currentSlots = tonumber(coopData.slots) or 0
@@ -331,16 +311,11 @@ task.spawn(function()
                     if currentSlots > 0 and currentSlots < targetLevel and canActuallyExpand then
                         local expandRemote = remotes:FindFirstChild("ExpandCoop") or remotes:FindFirstChild("Expand")
                         if expandRemote then
-                            if expandRemote:IsA("RemoteFunction") then 
-                                expandRemote:InvokeServer() 
-                            else 
-                                expandRemote:FireServer() 
-                            end
+                            if expandRemote:IsA("RemoteFunction") then expandRemote:InvokeServer() else expandRemote:FireServer() end
                         end
                     end
                 end
                 
-                -- 2. BUY GENERATOR / FEEDER LOGIC
                 if getgenv().BuyGenerator and coopData then
                     local maxTarget = math.clamp(getgenv().AutoBuyGenTarget or 2, 1, 6)
                     local currentGenCount = 0
@@ -366,23 +341,17 @@ task.spawn(function()
                         if genRemote then
                             local nextSlot = currentGenCount + 1
                             if nextSlot <= maxTarget then
-                                if genRemote:IsA("RemoteFunction") then 
-                                    genRemote:InvokeServer(nextSlot) 
-                                else 
-                                    genRemote:FireServer(nextSlot) 
-                                end
+                                if genRemote:IsA("RemoteFunction") then genRemote:InvokeServer(nextSlot) else genRemote:FireServer(nextSlot) end
                             end
                         end
                     end
                 end
                 
-                -- 3. ULTRA-FAST & ACCURATE MULTI-THREADED GENERATOR UPGRADE
                 if getgenv().UpgradeGenerator and coopData and coopData.generators then
                     local upGenRemote = remotes:FindFirstChild("UpgradeGenerator") or remotes:FindFirstChild("GeneratorUpgrade") or remotes:FindFirstChild("UpgradeGen")
                     local upgradeTarget = tonumber(getgenv().UpgradeGenTarget) or 10
                     
                     if upGenRemote then
-                        -- Sabay-sabay na i-fire sa bawat generator slot nang walang waiting delay sa pagitan ng mga slots
                         for _, genInfo in pairs(coopData.generators) do
                             if not getgenv().UpgradeGenerator then break end
                             local slotIdx = tonumber(genInfo.slot)
@@ -391,11 +360,7 @@ task.spawn(function()
                             if slotIdx and genLevel < upgradeTarget then
                                 task.spawn(function()
                                     pcall(function()
-                                        if upGenRemote:IsA("RemoteFunction") then 
-                                            upGenRemote:InvokeServer(slotIdx) 
-                                        else 
-                                            upGenRemote:FireServer(slotIdx) 
-                                        end
+                                        if upGenRemote:IsA("RemoteFunction") then upGenRemote:InvokeServer(slotIdx) else upGenRemote:FireServer(slotIdx) end
                                     end)
                                 end)
                             end
@@ -403,7 +368,6 @@ task.spawn(function()
                     end
                 end
                 
-                -- 4. UPGRADE RECYCLER
                 if getgenv().UpgradeRecycler then
                     local upRecRemote = remotes:FindFirstChild("UpgradeRecycler") or remotes:FindFirstChild("RecyclerUpgrade")
                     if upRecRemote then
@@ -411,7 +375,6 @@ task.spawn(function()
                     end
                 end
                 
-                -- 5. AUTO COLLECT EGGS
                 if getgenv().AutoCollectEgg then
                     local eggRemote = remotes:FindFirstChild("CollectEgg") or remotes:FindFirstChild("ClaimEggs") or remotes:FindFirstChild("EggCollect")
                     if eggRemote then
@@ -420,8 +383,55 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(0.2) -- Mas mabilis na cycle loop para instant na ma-detect at ma-upgrade ang generators
+        task.wait(0.2)
     end
+end)
+
+-- ===================================================
+-- AUTO POP-UP / LOSE OFFER DECLINER (Real-time UI Detector)
+-- ===================================================
+task.spawn(function()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
+
+    if not PlayerGui then return end
+
+    local function checkAndClose(guiObj)
+        if guiObj:IsA("TextButton") or guiObj:IsA("ImageButton") then
+            local nameLower = guiObj.Name:lower()
+            local textLower = ""
+            if guiObj:IsA("TextButton") and guiObj.Text then
+                textLower = guiObj.Text:lower()
+            end
+
+            -- Kung ang button ay para sa decline, close, cancel, o exit ng shop/talo offer
+            if nameLower:find("decline") or nameLower:find("close") or nameLower:find("cancel") or nameLower:find("exit") or nameLower:find("no") or
+               textLower:find("decline") or textLower:find("close") or textLower:find("cancel") or textLower:find("no thanks") then
+                pcall(function()
+                    for _, connection in ipairs(getconnections(guiObj.MouseButton1Click)) do
+                        connection:Fire()
+                    end
+                    for _, connection in ipairs(getconnections(guiObj.Activated)) do
+                        connection:Fire()
+                    end
+                end)
+            end
+        end
+    end
+
+    -- I-scan agad ang mga kasalukuyang UI
+    for _, desc in ipairs(PlayerGui:GetDescendants()) do
+        checkAndClose(desc)
+    end
+
+    -- Bantayan kung may lumitaw na bagong pop-up sa screen nang real-time
+    PlayerGui.DescendantAdded:Connect(function(desc)
+        task.spawn(function()
+            task.wait(0.05) -- Sobrangikling hintay para mag-load yung UI element
+            checkAndClose(desc)
+        end)
+    end)
 end)
 
 -- ===================================================

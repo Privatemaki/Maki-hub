@@ -170,15 +170,34 @@ BoxRecyclerEggs:AddDropdown("CollectEggMethodDropdown", {
 -- AUTOMATION LOGIC LOOPS
 -- ===================================================
 
--- Tower & Rebirth Loop
+-- Tower & Rebirth Loop (kasama na ang Auto-Close/Block Telemetry kapag ON)
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
     local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
     
+    local telemetryBlocked = false
+
     while true do
         if getgenv().AutoProgression and Remotes then
+            -- Naka-ON ang Auto Tower: I-block ang telemetry kung hindi pa na-block
+            if not telemetryBlocked then
+                pcall(function()
+                    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+                        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                            local nameLower = obj.Name:lower()
+                            if nameLower:find("telemetry") or nameLower:find("analytics") or nameLower:find("errorreport") or nameLower:find("crashreport") then
+                                pcall(function()
+                                    obj.Name = "DisabledTelemetry"
+                                end)
+                            end
+                        end
+                    end
+                end)
+                telemetryBlocked = true
+            end
+
             pcall(function()
                 local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
                 if not playerScripts then return end
@@ -270,12 +289,13 @@ task.spawn(function()
             end)
         else
             LabelActivity:SetText("Current Activity: Idle")
+            telemetryBlocked = false
         end
         task.wait(2)
     end
 end)
 
--- Secondary Loop: Post-Rebirth Fixed Coop/Generator/Egg Automation
+-- High-Speed & Accurate Automation Loop (Optimized for Fast yet Precise Upgrading)
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
@@ -297,7 +317,7 @@ task.spawn(function()
                     end)
                 end
                 
-                -- 1. STRICT EXPAND COOP LOGIC
+                -- 1. FAST & ACCURATE EXPAND COOP LOGIC
                 if getgenv().ExpandCoop and coopData then
                     local targetLevel = tonumber(getgenv().ExpandTargetLevel) or 2
                     local currentSlots = tonumber(coopData.slots) or 0
@@ -321,7 +341,7 @@ task.spawn(function()
                     end
                 end
                 
-                -- 2. FIXED BUY GENERATOR / FEEDER LOGIC AFTER REBIRTH
+                -- 2. FAST & ACCURATE BUY GENERATOR / FEEDER LOGIC
                 if getgenv().BuyGenerator and coopData then
                     local maxTarget = math.clamp(getgenv().AutoBuyGenTarget or 2, 1, 6)
                     local currentGenCount = 0
@@ -357,20 +377,26 @@ task.spawn(function()
                     end
                 end
                 
-                -- 3. UPGRADE GENERATORS
-                if getgenv().UpgradeGenerator then
+                -- 3. FAST & ACCURATE UPGRADE GENERATORS
+                if getgenv().UpgradeGenerator and coopData and coopData.generators then
                     local upGenRemote = remotes:FindFirstChild("UpgradeGenerator") or remotes:FindFirstChild("GeneratorUpgrade") or remotes:FindFirstChild("UpgradeGen")
+                    local upgradeTarget = tonumber(getgenv().UpgradeGenTarget) or 10
+                    
                     if upGenRemote then
-                        for i = 1, 6 do
+                        for _, genInfo in pairs(coopData.generators) do
                             if not getgenv().UpgradeGenerator then break end
-                            pcall(function()
-                                if upGenRemote:IsA("RemoteFunction") then 
-                                    upGenRemote:InvokeServer(i) 
-                                else 
-                                    upGenRemote:FireServer(i) 
-                                end
-                            end)
-                            task.wait(0.15)
+                            local slotIdx = tonumber(genInfo.slot)
+                            local genLevel = tonumber(genInfo.level) or 0
+                            
+                            if slotIdx and genLevel < upgradeTarget then
+                                pcall(function()
+                                    if upGenRemote:IsA("RemoteFunction") then 
+                                        upGenRemote:InvokeServer(slotIdx) 
+                                    else 
+                                        upGenRemote:FireServer(slotIdx) 
+                                    end
+                                end)
+                            end
                         end
                     end
                 end
@@ -392,29 +418,8 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(1.5)
+        task.wait(0.5)
     end
-end)
-
--- ===================================================
--- AUTO CLOSE / BLOCK TELEMETRY & ERROR REPORTING
--- ===================================================
-task.spawn(function()
-    pcall(function()
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        -- I-check at i-block ang mga telemetry/analytics remote calls kung meron man
-        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local nameLower = obj.Name:lower()
-                if nameLower:find("telemetry") or nameLower:find("analytics") or nameLower:find("errorreport") or nameLower:find("crashreport") then
-                    -- Huwag i-execute o i-hook para hindi magpadala ng data
-                    pcall(function()
-                        obj.Name = "DisabledTelemetry"
-                    end)
-                end
-            end
-        end
-    end)
 end)
 
 -- ===================================================

@@ -507,7 +507,6 @@ SmartFlowGroup:AddToggle("AutoProgressionToggle", {
         end
     end
 })
-
 -- ===================================================
 -- AUTO CLOSE TELEMETRY & OFFERS
 -- ===================================================
@@ -530,7 +529,6 @@ task.spawn(function()
         end
     end
 end)
-
 -- ===================================================
 -- SAVE MANAGER LOAD
 -- ===================================================

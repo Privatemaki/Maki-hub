@@ -170,7 +170,7 @@ BoxRecyclerEggs:AddDropdown("CollectEggMethodDropdown", {
 -- AUTOMATION LOGIC LOOPS
 -- ===================================================
 
--- Tower & Rebirth Loop (kasama na ang Auto-Close/Block Telemetry kapag ON)
+-- Tower & Rebirth Loop (Kasama ang Auto Telemetry Block)
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
@@ -181,7 +181,6 @@ task.spawn(function()
 
     while true do
         if getgenv().AutoProgression and Remotes then
-            -- Naka-ON ang Auto Tower: I-block ang telemetry kung hindi pa na-block
             if not telemetryBlocked then
                 pcall(function()
                     for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
@@ -295,16 +294,14 @@ task.spawn(function()
     end
 end)
 
--- High-Speed & Accurate Automation Loop (Optimized for Fast yet Precise Upgrading)
+-- Main Automation Loop: Fixed Expand, Buy, and Accurate Upgrade Logic
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
     
     local DataServiceClient = nil
-    local CoopViewModule = nil
     pcall(function()
         DataServiceClient = require(ReplicatedStorage.Packages.DataService).client
-        CoopViewModule = require(ReplicatedStorage.Features.Coop.CoopView)
     end)
     
     while true do
@@ -317,85 +314,59 @@ task.spawn(function()
                     end)
                 end
                 
-                -- 1. FAST & ACCURATE EXPAND COOP LOGIC
-                if getgenv().ExpandCoop and coopData then
-                    local targetLevel = tonumber(getgenv().ExpandTargetLevel) or 2
-                    local currentSlots = tonumber(coopData.slots) or 0
-                    local canActuallyExpand = true
-                    
-                    if CoopViewModule and CoopViewModule.canExpand and currentSlots > 0 then
-                        pcall(function()
-                            canActuallyExpand = CoopViewModule.canExpand(currentSlots)
-                        end)
-                    end
-                    
-                    if currentSlots > 0 and currentSlots < targetLevel and canActuallyExpand then
-                        local expandRemote = remotes:FindFirstChild("ExpandCoop") or remotes:FindFirstChild("Expand")
-                        if expandRemote then
-                            if expandRemote:IsA("RemoteFunction") then 
-                                expandRemote:InvokeServer() 
-                            else 
-                                expandRemote:FireServer() 
+                if coopData then
+                    -- 1. STRICT EXPAND COOP LOGIC
+                    if getgenv().ExpandCoop then
+                        local targetLevel = tonumber(getgenv().ExpandTargetLevel) or 2
+                        local currentSlots = tonumber(coopData.slots) or 0
+                        
+                        if currentSlots < targetLevel then
+                            local expandRemote = remotes:FindFirstChild("ExpandCoop") or remotes:FindFirstChild("Expand")
+                            if expandRemote then
+                                if expandRemote:IsA("RemoteFunction") then expandRemote:InvokeServer()
+                                else expandRemote:FireServer() end
                             end
                         end
                     end
-                end
-                
-                -- 2. FAST & ACCURATE BUY GENERATOR / FEEDER LOGIC
-                if getgenv().BuyGenerator and coopData then
-                    local maxTarget = math.clamp(getgenv().AutoBuyGenTarget or 2, 1, 6)
-                    local currentGenCount = 0
                     
-                    if coopData.generators then
-                        if type(coopData.generators) == "table" then
+                    -- 2. STRICT BUY GENERATOR LOGIC
+                    if getgenv().BuyGenerator then
+                        local maxTarget = tonumber(getgenv().AutoBuyGenTarget) or 2
+                        local currentGenCount = 0
+                        
+                        if coopData.generators then
                             for _, _ in pairs(coopData.generators) do
                                 currentGenCount = currentGenCount + 1
                             end
                         end
-                    end
-                    
-                    local canBuyViaModule = true
-                    local slotsCount = tonumber(coopData.slots) or 1
-                    if CoopViewModule and CoopViewModule.canBuyGenerator then
-                        pcall(function()
-                            canBuyViaModule = CoopViewModule.canBuyGenerator(slotsCount, currentGenCount)
-                        end)
-                    end
-                    
-                    if currentGenCount < maxTarget and canBuyViaModule then
-                        local genRemote = remotes:FindFirstChild("BuyGenerator") or remotes:FindFirstChild("GeneratorBuy") or remotes:FindFirstChild("BuyGen")
-                        if genRemote then
-                            local nextSlot = currentGenCount + 1
-                            if nextSlot <= maxTarget then
-                                if genRemote:IsA("RemoteFunction") then 
-                                    genRemote:InvokeServer(nextSlot) 
-                                else 
-                                    genRemote:FireServer(nextSlot) 
-                                end
+                        
+                        if currentGenCount < maxTarget then
+                            local genRemote = remotes:FindFirstChild("BuyGenerator") or remotes:FindFirstChild("GeneratorBuy")
+                            if genRemote then
+                                local nextSlot = currentGenCount + 1
+                                if genRemote:IsA("RemoteFunction") then genRemote:InvokeServer(nextSlot)
+                                else genRemote:FireServer(nextSlot) end
                             end
                         end
                     end
-                end
-                
-                -- 3. FAST & ACCURATE UPGRADE GENERATORS
-                if getgenv().UpgradeGenerator and coopData and coopData.generators then
-                    local upGenRemote = remotes:FindFirstChild("UpgradeGenerator") or remotes:FindFirstChild("GeneratorUpgrade") or remotes:FindFirstChild("UpgradeGen")
-                    local upgradeTarget = tonumber(getgenv().UpgradeGenTarget) or 10
                     
-                    if upGenRemote then
-                        for _, genInfo in pairs(coopData.generators) do
-                            if not getgenv().UpgradeGenerator then break end
-                            local slotIdx = tonumber(genInfo.slot)
-                            local genLevel = tonumber(genInfo.level) or 0
-                            
-                            if slotIdx and genLevel < upgradeTarget then
-                                pcall(function()
-                                    if upGenRemote:IsA("RemoteFunction") then 
-                                        upGenRemote:InvokeServer(slotIdx) 
-                                    else 
-                                        upGenRemote:FireServer(slotIdx) 
-                                    end
-                                end)
+                    -- 3. STRICT UPGRADE GENERATORS LOGIC
+                    if getgenv().UpgradeGenerator and coopData.generators then
+                        local upGenRemote = remotes:FindFirstChild("UpgradeGenerator") or remotes:FindFirstChild("GeneratorUpgrade")
+                        local upgradeTarget = tonumber(getgenv().UpgradeGenTarget) or 10
+                        
+                        if upGenRemote then
+                            for _, genInfo in pairs(coopData.generators) do
+                                local level = tonumber(genInfo.level) or 0
+                                local slotIdx = tonumber(genInfo.slot)
+                                
+                                if slotIdx and level < upgradeTarget then
+                                    pcall(function()
+                                        if upGenRemote:IsA("RemoteFunction") then upGenRemote:InvokeServer(slotIdx)
+                                        else upGenRemote:FireServer(slotIdx) end
+                                    end)
+                                    task.wait(0.2)
+                                end
                             end
                         end
                     end
@@ -418,7 +389,7 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(0.5)
+        task.wait(1)
     end
 end)
 

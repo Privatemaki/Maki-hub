@@ -28,7 +28,7 @@ getgenv().TowerDelay = 1
 getgenv().ExpandCoop = false
 getgenv().ExpandTargetLevel = 2
 getgenv().BuyGenerator = false
-getgenv().AutoBuyGenTarget = 6
+getgenv().AutoBuyGenTarget = 2
 getgenv().UpgradeGenerator = false
 getgenv().UpgradeGenTarget = 10
 getgenv().UpgradeGeneratorMethod = "Teleport"
@@ -111,10 +111,10 @@ BoxGenerators:AddToggle("BuyGeneratorToggle", {
 })
 BoxGenerators:AddInput("AutoBuyGenTargetInput", {
     Text = "Target Generator Count (1-6)",
-    Default = "6",
+    Default = "2",
     Numeric = true,
     Finished = true,
-    Callback = function(Value) getgenv().AutoBuyGenTarget = tonumber(Value) or 6 end
+    Callback = function(Value) getgenv().AutoBuyGenTarget = tonumber(Value) or 2 end
 })
 
 BoxGenerators:AddDivider()
@@ -275,36 +275,41 @@ task.spawn(function()
     end
 end)
 
--- Secondary Loop: Accurate DataService Check for Expand Coop & Generator Buy/Upgrade
+-- Secondary Loop: Post-Rebirth Fixed Coop/Generator/Egg Automation
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
     
-    -- Kunin ang DataService client galing sa packages (base sa decompiled script mo)
     local DataServiceClient = nil
+    local CoopViewModule = nil
     pcall(function()
         DataServiceClient = require(ReplicatedStorage.Packages.DataService).client
+        CoopViewModule = require(ReplicatedStorage.Features.Coop.CoopView)
     end)
     
     while true do
         if remotes then
             pcall(function()
-                -- 1. ACCURATE EXPAND COOP LOGIC
-                if getgenv().ExpandCoop then
+                local coopData = nil
+                if DataServiceClient then
+                    pcall(function()
+                        coopData = DataServiceClient:get({ "coop" })
+                    end)
+                end
+                
+                -- 1. STRICT EXPAND COOP LOGIC
+                if getgenv().ExpandCoop and coopData then
                     local targetLevel = tonumber(getgenv().ExpandTargetLevel) or 2
-                    local currentSlots = 0
+                    local currentSlots = tonumber(coopData.slots) or 0
+                    local canActuallyExpand = true
                     
-                    if DataServiceClient then
+                    if CoopViewModule and CoopViewModule.canExpand and currentSlots > 0 then
                         pcall(function()
-                            local coopData = DataServiceClient:get({ "coop" })
-                            if coopData and coopData.slots then
-                                currentSlots = tonumber(coopData.slots) or 0
-                            end
+                            canActuallyExpand = CoopViewModule.canExpand(currentSlots)
                         end)
                     end
                     
-                    -- Titigil agad at HINDI na mag-eexecute kung naabot o lumampas na sa targetLevel!
-                    if currentSlots > 0 and currentSlots < targetLevel then
+                    if currentSlots > 0 and currentSlots < targetLevel and canActuallyExpand then
                         local expandRemote = remotes:FindFirstChild("ExpandCoop") or remotes:FindFirstChild("Expand")
                         if expandRemote then
                             if expandRemote:IsA("RemoteFunction") then 
@@ -316,21 +321,28 @@ task.spawn(function()
                     end
                 end
                 
-                -- 2. ACCURATE BUY GENERATOR LOGIC
-                if getgenv().BuyGenerator then
-                    local maxTarget = math.clamp(getgenv().AutoBuyGenTarget or 6, 1, 6)
+                -- 2. FIXED BUY GENERATOR / FEEDER LOGIC AFTER REBIRTH
+                if getgenv().BuyGenerator and coopData then
+                    local maxTarget = math.clamp(getgenv().AutoBuyGenTarget or 2, 1, 6)
                     local currentGenCount = 0
                     
-                    if DataServiceClient then
-                        pcall(function()
-                            local coopData = DataServiceClient:get({ "coop" })
-                            if coopData and coopData.generators then
-                                currentGenCount = #coopData.generators
+                    if coopData.generators then
+                        if type(coopData.generators) == "table" then
+                            for _, _ in pairs(coopData.generators) do
+                                currentGenCount = currentGenCount + 1
                             end
+                        end
+                    end
+                    
+                    local canBuyViaModule = true
+                    local slotsCount = tonumber(coopData.slots) or 1
+                    if CoopViewModule and CoopViewModule.canBuyGenerator then
+                        pcall(function()
+                            canBuyViaModule = CoopViewModule.canBuyGenerator(slotsCount, currentGenCount)
                         end)
                     end
                     
-                    if currentGenCount < maxTarget then
+                    if currentGenCount < maxTarget and canBuyViaModule then
                         local genRemote = remotes:FindFirstChild("BuyGenerator") or remotes:FindFirstChild("GeneratorBuy") or remotes:FindFirstChild("BuyGen")
                         if genRemote then
                             local nextSlot = currentGenCount + 1
@@ -382,6 +394,27 @@ task.spawn(function()
         end
         task.wait(1.5)
     end
+end)
+
+-- ===================================================
+-- AUTO CLOSE / BLOCK TELEMETRY & ERROR REPORTING
+-- ===================================================
+task.spawn(function()
+    pcall(function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        -- I-check at i-block ang mga telemetry/analytics remote calls kung meron man
+        for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                local nameLower = obj.Name:lower()
+                if nameLower:find("telemetry") or nameLower:find("analytics") or nameLower:find("errorreport") or nameLower:find("crashreport") then
+                    -- Huwag i-execute o i-hook para hindi magpadala ng data
+                    pcall(function()
+                        obj.Name = "DisabledTelemetry"
+                    end)
+                end
+            end
+        end
+    end)
 end)
 
 -- ===================================================

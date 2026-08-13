@@ -388,50 +388,52 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- AUTO POP-UP / LOSE OFFER DECLINER (Real-time UI Detector)
+-- AUTO TOWER CONTINUE DECLINER (Cobalt Integration)
 -- ===================================================
 task.spawn(function()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
     local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
 
-    if not PlayerGui then return end
-
-    local function checkAndClose(guiObj)
-        if guiObj:IsA("TextButton") or guiObj:IsA("ImageButton") then
-            local nameLower = guiObj.Name:lower()
-            local textLower = ""
-            if guiObj:IsA("TextButton") and guiObj.Text then
-                textLower = guiObj.Text:lower()
+    while true do
+        pcall(function()
+            -- 1. Direktang i-fire ang Remote kung available
+            local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
+            if remotesFolder then
+                local declineEvent = remotesFolder:FindFirstChild("TowerContinueDecline")
+                if declineEvent and declineEvent:IsA("RemoteEvent") then
+                    declineEvent:FireServer()
+                end
             end
 
-            -- Kung ang button ay para sa decline, close, cancel, o exit ng shop/talo offer
-            if nameLower:find("decline") or nameLower:find("close") or nameLower:find("cancel") or nameLower:find("exit") or nameLower:find("no") or
-               textLower:find("decline") or textLower:find("close") or textLower:find("cancel") or textLower:find("no thanks") then
-                pcall(function()
-                    for _, connection in ipairs(getconnections(guiObj.MouseButton1Click)) do
-                        connection:Fire()
+            -- 2. I-auto click din ang anumang UI elements na may kinalaman sa continue/decline/close
+            if PlayerGui then
+                for _, desc in ipairs(PlayerGui:GetDescendants()) do
+                    if desc:IsA("TextButton") or desc:IsA("ImageButton") then
+                        local nameLower = desc.Name:lower()
+                        local textLower = ""
+                        if desc:IsA("TextButton") and desc.Text then
+                            textLower = desc.Text:lower()
+                        end
+
+                        if nameLower:find("decline") or nameLower:find("close") or nameLower:find("cancel") or nameLower:find("exit") or nameLower:find("no") or
+                           textLower:find("decline") or textLower:find("close") or textLower:find("cancel") or textLower:find("no thanks") then
+                            pcall(function()
+                                for _, connection in ipairs(getconnections(desc.MouseButton1Click)) do
+                                    connection:Fire()
+                                end
+                                for _, connection in ipairs(getconnections(desc.Activated)) do
+                                    connection:Fire()
+                                end
+                            end)
+                        end
                     end
-                    for _, connection in ipairs(getconnections(guiObj.Activated)) do
-                        connection:Fire()
-                    end
-                end)
+                end
             end
-        end
-    end
-
-    -- I-scan agad ang mga kasalukuyang UI
-    for _, desc in ipairs(PlayerGui:GetDescendants()) do
-        checkAndClose(desc)
-    end
-
-    -- Bantayan kung may lumitaw na bagong pop-up sa screen nang real-time
-    PlayerGui.DescendantAdded:Connect(function(desc)
-        task.spawn(function()
-            task.wait(0.05) -- Sobrangikling hintay para mag-load yung UI element
-            checkAndClose(desc)
         end)
-    end)
+        task.wait(1) -- Sinusuri at pinipiga nito ang remote/UI bawat 1 segundo para mabilis masara pagka-talo
+    end
 end)
 
 -- ===================================================

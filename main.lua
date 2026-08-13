@@ -5,7 +5,7 @@ local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
 local Window = Library:CreateWindow({
     Title = "MAKI HUB",
-    Footer = "Maki Hub v2.5 | Ultimate Edition (Walk Integrated)",
+    Footer = "Maki Hub v2.5 | Ultimate Edition",
     Icon = "crown",
     NotifySide = "Right",
     ShowCustomCursor = true,
@@ -36,73 +36,6 @@ getgenv().UpgradeRecycler = false
 getgenv().UpgradeRecyclerTarget = 10
 getgenv().AutoCollectEgg = false
 getgenv().CollectEggMethod = "Teleport"
-
--- Coop Walk Method Configuration
-local allowedDistance = 2 
-local forwardOffsetDistance = 4 
-local isReturning = false
-
-local function findMyCoopCenter()
-    local Players = game:GetService("Players")
-    local Workspace = game:GetService("Workspace")
-    local localPlayer = Players.LocalPlayer
-    
-    local coopsFolder = Workspace:FindFirstChild("Coops")
-    if not coopsFolder then return nil end
-    
-    for _, coop in ipairs(coopsFolder:GetChildren()) do
-        for _, desc in ipairs(coop:GetDescendants()) do
-            if desc:IsA("TextLabel") and string.find(desc.Text, localPlayer.Name) then
-                return (coop:IsA("Model") and coop:GetBoundingBox().Position) or (coop:IsA("BasePart") and coop.Position)
-            end
-        end
-    end
-    
-    local root = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if root then
-        local nearestPos, shortestDist = nil, math.huge
-        for _, coop in ipairs(coopsFolder:GetChildren()) do
-            local pos = (coop:IsA("Model") and coop:GetBoundingBox().Position) or (coop:IsA("BasePart") and coop.Position)
-            if pos and (root.Position - pos).Magnitude < shortestDist then
-                shortestDist = (root.Position - pos).Magnitude
-                nearestPos = pos
-            end
-        end
-        return nearestPos
-    end
-    return nil
-end
-
-local function executeWalkMethod()
-    pcall(function()
-        local Players = game:GetService("Players")
-        local localPlayer = Players.LocalPlayer
-        local baseCoopPosition = findMyCoopCenter()
-        if not baseCoopPosition then return end
-        
-        local character = localPlayer.Character
-        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-        
-        if not rootPart or not humanoid then return end
-        
-        local targetPosition = baseCoopPosition + Vector3.new(rootPart.CFrame.LookVector.X, 0, rootPart.CFrame.LookVector.Z).Unit * forwardOffsetDistance
-        
-        if (rootPart.Position - targetPosition).Magnitude > allowedDistance then
-            isReturning = true
-            humanoid.WalkSpeed = 25
-            humanoid:MoveTo(targetPosition)
-            
-            local reached = false
-            local conn = humanoid.MoveToFinished:Connect(function() reached = true end)
-            repeat task.wait(0.1) until reached or (rootPart.Position - targetPosition).Magnitude < 1
-            conn:Disconnect()
-            
-            humanoid.WalkSpeed = 16
-            isReturning = false
-        end
-    end)
-end
 
 -- ===================================================
 -- TAB 1: INFO
@@ -342,7 +275,7 @@ task.spawn(function()
     end
 end)
 
--- Ultra-Fast Generator Upgrade Loop (Integrated with Walk Method)
+-- Ultra-Fast Generator Upgrade Loop
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
@@ -425,11 +358,6 @@ task.spawn(function()
                             local genLevel = tonumber(genInfo.level) or 0
                             
                             if slotIdx and genLevel < upgradeTarget then
-                                -- Check kung Walk ang pinili sa Upgrade Method dropdown
-                                if getgenv().UpgradeGeneratorMethod == "Walk" then
-                                    executeWalkMethod()
-                                end
-                                
                                 task.spawn(function()
                                     pcall(function()
                                         if upGenRemote:IsA("RemoteFunction") then upGenRemote:InvokeServer(slotIdx) else upGenRemote:FireServer(slotIdx) end
@@ -460,7 +388,7 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- AUTO TOWER CONTINUE DECLINER
+-- AUTO TOWER CONTINUE DECLINER (Cobalt Integration)
 -- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -470,6 +398,7 @@ task.spawn(function()
 
     while true do
         pcall(function()
+            -- 1. Direktang i-fire ang Remote kung available
             local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
             if remotesFolder then
                 local declineEvent = remotesFolder:FindFirstChild("TowerContinueDecline")
@@ -478,6 +407,7 @@ task.spawn(function()
                 end
             end
 
+            -- 2. I-auto click din ang anumang UI elements na may kinalaman sa continue/decline/close
             if PlayerGui then
                 for _, desc in ipairs(PlayerGui:GetDescendants()) do
                     if desc:IsA("TextButton") or desc:IsA("ImageButton") then
@@ -502,7 +432,7 @@ task.spawn(function()
                 end
             end
         end)
-        task.wait(1)
+        task.wait(1) -- Sinusuri at pinipiga nito ang remote/UI bawat 1 segundo para mabilis masara pagka-talo
     end
 end)
 

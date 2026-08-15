@@ -435,6 +435,78 @@ task.spawn(function()
 end)
 
 -- ===================================================
+-- AUTO-ACTIVE AFK COOP GUARD (Safe / No WalkSpeed Change)
+-- ===================================================
+task.spawn(function()
+    local Players = game:GetService("Players")
+    local Workspace = game:GetService("Workspace")
+    local localPlayer = Players.LocalPlayer
+
+    local allowedDistance = 2 
+    local forwardOffsetDistance = 4 
+    local isReturning = false
+
+    local function findMyCoopCenter()
+        local coopsFolder = Workspace:FindFirstChild("Coops")
+        if not coopsFolder then return nil end
+        
+        for _, coop in ipairs(coopsFolder:GetChildren()) do
+            for _, desc in ipairs(coop:GetDescendants()) do
+                if desc:IsA("TextLabel") and string.find(desc.Text, localPlayer.Name) then
+                    return (coop:IsA("Model") and coop:GetBoundingBox().Position) or (coop:IsA("BasePart") and coop.Position)
+                end
+            end
+        end
+        local root = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            local nearestPos, shortestDist = nil, math.huge
+            for _, coop in ipairs(coopsFolder:GetChildren()) do
+                local pos = (coop:IsA("Model") and coop:GetBoundingBox().Position) or (coop:IsA("BasePart") and coop.Position)
+                if pos and (root.Position - pos).Magnitude < shortestDist then
+                    shortestDist = (root.Position - pos).Magnitude
+                    nearestPos = pos
+                end
+            end
+            return nearestPos
+        end
+        return nil
+    end
+
+    task.wait(5)
+    
+    local baseCoopPosition = nil
+    repeat task.wait(1) baseCoopPosition = findMyCoopCenter() until baseCoopPosition
+    
+    while true do
+        task.wait(0.5)
+        local character = localPlayer.Character
+        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+        
+        if baseCoopPosition and rootPart then
+            local targetPosition = baseCoopPosition + Vector3.new(rootPart.CFrame.LookVector.X, 0, rootPart.CFrame.LookVector.Z).Unit * forwardOffsetDistance
+            local currentCharacter = localPlayer.Character
+            local currentHumanoid = currentCharacter and currentCharacter:FindFirstChildOfClass("Humanoid")
+            local currentRoot = currentCharacter and currentCharacter:FindFirstChild("HumanoidRootPart")
+            
+            if targetPosition and currentCharacter and currentRoot and currentHumanoid and not isReturning then
+                if (currentRoot.Position - targetPosition).Magnitude > allowedDistance then
+                    isReturning = true
+                    -- Tinanggal na ang WalkSpeed modification para ligtas sa ban
+                    currentHumanoid:MoveTo(targetPosition)
+                    
+                    local reached = false
+                    local conn = currentHumanoid.MoveToFinished:Connect(function() reached = true end)
+                    repeat task.wait(0.1) until reached or (currentRoot.Position - targetPosition).Magnitude < 1
+                    conn:Disconnect()
+                    
+                    isReturning = false
+                end
+            end
+        end
+    end
+end)
+
+-- ===================================================
 -- SETTINGS TAB
 -- ===================================================
 local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Menu & Config Management", "settings")

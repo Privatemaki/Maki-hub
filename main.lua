@@ -388,7 +388,7 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- AUTO TOWER CONTINUE DECLINER
+-- SAFE AUTO TOWER CONTINUE DECLINER (Targeted Only)
 -- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -398,6 +398,7 @@ task.spawn(function()
 
     while true do
         pcall(function()
+            -- 1. Laging i-fire ang Remote para sure na ma-decline sa server
             local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
             if remotesFolder then
                 local declineEvent = remotesFolder:FindFirstChild("TowerContinueDecline")
@@ -406,25 +407,29 @@ task.spawn(function()
                 end
             end
 
+            -- 2. I-target lang specifically ang Tower Continue / GameOver UI, hindi ang buong PlayerGui
             if PlayerGui then
-                for _, desc in ipairs(PlayerGui:GetDescendants()) do
-                    if desc:IsA("TextButton") or desc:IsA("ImageButton") then
-                        local nameLower = desc.Name:lower()
-                        local textLower = ""
-                        if desc:IsA("TextButton") and desc.Text then
-                            textLower = desc.Text:lower()
-                        end
-
-                        if nameLower:find("decline") or nameLower:find("close") or nameLower:find("cancel") or nameLower:find("exit") or nameLower:find("no") or
-                           textLower:find("decline") or textLower:find("close") or textLower:find("cancel") or textLower:find("no thanks") then
-                            pcall(function()
-                                for _, connection in ipairs(getconnections(desc.MouseButton1Click)) do
-                                    connection:Fire()
+                for _, gui in ipairs(PlayerGui:GetChildren()) do
+                    local guiName = gui.Name:lower()
+                    -- Tingnan lang kung ito ay menu ng Tower Continue, Revive, o GameOver
+                    if guiName:find("continue") or guiName:find("revive") or guiName:find("gameover") or guiName:find("towerend") then
+                        for _, desc in ipairs(gui:GetDescendants()) do
+                            if desc:IsA("TextButton") or desc:IsA("ImageButton") then
+                                local textLower = (desc:IsA("TextButton") and desc.Text) and desc.Text:lower() or ""
+                                local nameLower = desc.Name:lower()
+                                
+                                if nameLower:find("decline") or nameLower:find("close") or nameLower:find("cancel") or nameLower:find("no") or
+                                   textLower:find("decline") or textLower:find("no thanks") or textLower:find("cancel") then
+                                    pcall(function()
+                                        for _, connection in ipairs(getconnections(desc.MouseButton1Click)) do
+                                            connection:Fire()
+                                        end
+                                        for _, connection in ipairs(getconnections(desc.Activated)) do
+                                            connection:Fire()
+                                        end
+                                    end)
                                 end
-                                for _, connection in ipairs(getconnections(desc.Activated)) do
-                                    connection:Fire()
-                                end
-                            end)
+                            end
                         end
                     end
                 end

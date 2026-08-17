@@ -394,48 +394,36 @@ task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
+    local PlayerScripts = LocalPlayer:WaitForChild("PlayerScripts", 5)
     local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
 
     while true do
         pcall(function()
-            -- 1. Laging i-fire ang Remote para sure na ma-decline sa server
-            local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
-            if remotesFolder then
-                local declineEvent = remotesFolder:FindFirstChild("TowerContinueDecline")
-                if declineEvent and declineEvent:IsA("RemoteEvent") then
-                    declineEvent:FireServer()
-                end
+            -- 1. I-fire agad yung RemoteEvent para ma-decline sa server side
+            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+            if remotes then
+                local declineEvent = remotesFen:FindFirstChild("TowerContinueDecline") -- wait, check natin yung tamang variable name
+                -- or diretso na to:
+            end
+            
+            local Event = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("TowerContinueDecline")
+            if Event then
+                Event:FireServer()
             end
 
-            -- 2. I-target lang specifically ang Tower Continue / GameOver UI, hindi ang buong PlayerGui
+            -- 2. I-check kung lumitaw sa screen yung ContinueController UI para maisara/ma-decline
             if PlayerGui then
+                -- Karaniwan ang UI ng mga ganyang offer ay nasa loob ng PlayerGui o PlayerScripts, hanapin natin ang UI element
                 for _, gui in ipairs(PlayerGui:GetChildren()) do
-                    local guiName = gui.Name:lower()
-                    -- Tingnan lang kung ito ay menu ng Tower Continue, Revive, o GameOver
-                    if guiName:find("continue") or guiName:find("revive") or guiName:find("gameover") or guiName:find("towerend") then
-                        for _, desc in ipairs(gui:GetDescendants()) do
-                            if desc:IsA("TextButton") or desc:IsA("ImageButton") then
-                                local textLower = (desc:IsA("TextButton") and desc.Text) and desc.Text:lower() or ""
-                                local nameLower = desc.Name:lower()
-                                
-                                if nameLower:find("decline") or nameLower:find("close") or nameLower:find("cancel") or nameLower:find("no") or
-                                   textLower:find("decline") or textLower:find("no thanks") or textLower:find("cancel") then
-                                    pcall(function()
-                                        for _, connection in ipairs(getconnections(desc.MouseButton1Click)) do
-                                            connection:Fire()
-                                        end
-                                        for _, connection in ipairs(getconnections(desc.Activated)) do
-                                            connection:Fire()
-                                        end
-                                    end)
-                                end
-                            end
-                        end
+                    local name = gui.Name:lower()
+                    if name:find("continue") or name:find("offer") or name:find("towerend") then
+                        -- Subukan i-destroy o i-disable kung sakaling sumabit sa screen
+                        gui.Enabled = false
                     end
                 end
             end
         end)
-        task.wait(1)
+        task.wait(0.5) -- Mas mabilis na check para paglitaw na paglitaw eh sarado agad
     end
 end)
 

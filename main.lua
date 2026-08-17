@@ -392,38 +392,17 @@ end)
 -- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    local PlayerScripts = LocalPlayer:WaitForChild("PlayerScripts", 5)
-    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
+    local remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
+    if not remotes then return end
 
-    while true do
-        pcall(function()
-            -- 1. I-fire agad yung RemoteEvent para ma-decline sa server side
-            local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-            if remotes then
-                local declineEvent = remotesFen:FindFirstChild("TowerContinueDecline") -- wait, check natin yung tamang variable name
-                -- or diretso na to:
-            end
-            
-            local Event = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("TowerContinueDecline")
-            if Event then
-                Event:FireServer()
-            end
+    local continueOfferEvent = remotes:WaitForChild("TowerContinueOffer", 10)
+    local declineEvent = remotes:WaitForChild("TowerContinueDecline", 10)
 
-            -- 2. I-check kung lumitaw sa screen yung ContinueController UI para maisara/ma-decline
-            if PlayerGui then
-                -- Karaniwan ang UI ng mga ganyang offer ay nasa loob ng PlayerGui o PlayerScripts, hanapin natin ang UI element
-                for _, gui in ipairs(PlayerGui:GetChildren()) do
-                    local name = gui.Name:lower()
-                    if name:find("continue") or name:find("offer") or name:find("towerend") then
-                        -- Subukan i-destroy o i-disable kung sakaling sumabit sa screen
-                        gui.Enabled = false
-                    end
-                end
-            end
+    if continueOfferEvent and declineEvent then
+        continueOfferEvent.OnClientEvent:Connect(function(...)
+            task.wait(0.05)
+            declineEvent:FireServer()
         end)
-        task.wait(0.5) -- Mas mabilis na check para paglitaw na paglitaw eh sarado agad
     end
 end)
 

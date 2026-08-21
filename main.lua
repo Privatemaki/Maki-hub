@@ -43,19 +43,19 @@ getgenv().CollectEggMethod = "Teleport"
 -- ===================================================
 -- TAB 1: INFO
 -- ===================================================
-local InfoLeft = Tabs.Info:AddLeftGroupbox("Progression Status", "info")
-local LabelActivity = InfoLeft:AddLabel("Current Activity: Idle")
-local LabelCurrFloor = InfoLeft:AddLabel("Current Floor: 0")
-local LabelHighestFloor = InfoLeft:AddLabel("Highest Floor: 0")
-local LabelReqs = InfoLeft:AddLabel("Requirements: Checking...")
-InfoLeft:AddLabel("Coop Level: Synced")
-InfoLeft:AddLabel("Generator Level: Synced")
-InfoLeft:AddLabel("Feeders Status: Active")
+local InfoLeft = Tabs.Info:AddLeftGroupbox("Progression Status", "info")[span_0](start_span)[span_0](end_span)
+local LabelActivity = InfoLeft:AddLabel("Current Activity: Idle")[span_1](start_span)[span_1](end_span)
+local LabelCurrFloor = InfoLeft:AddLabel("Current Floor: 0")[span_2](start_span)[span_2](end_span)
+local LabelHighestFloor = InfoLeft:AddLabel("Highest Floor: 0")[span_3](start_span)[span_3](end_span)
+local LabelReqs = InfoLeft:AddLabel("Requirements: Checking...")[span_4](start_span)[span_4](end_span)
+InfoLeft:AddLabel("Coop Level: Synced")[span_5](start_span)[span_5](end_span)
+InfoLeft:AddLabel("Generator Level: Synced")[span_6](start_span)[span_6](end_span)
+InfoLeft:AddLabel("Feeders Status: Active")[span_7](start_span)[span_7](end_span)
 
-local InfoRight = Tabs.Info:AddRightGroupbox("Performance Monitor", "activity")
-local LabelFPS = InfoRight:AddLabel("FPS: Calculating...")
-InfoRight:AddLabel("Ping: Calculating...")
-InfoRight:AddLabel("Executor: " .. (identifyexecutor and identifyexecutor() or "Unknown"))
+local InfoRight = Tabs.Info:AddRightGroupbox("Performance Monitor", "activity")[span_8](start_span)[span_8](end_span)
+local LabelFPS = InfoRight:AddLabel("FPS: Calculating...")[span_9](start_span)[span_9](end_span)
+InfoRight:AddLabel("Ping: Calculating...")[span_10](start_span)[span_10](end_span)
+InfoRight:AddLabel("Executor: " .. (identifyexecutor and identifyexecutor() or "Unknown"))[span_11](start_span)[span_11](end_span)
 
 -- FPS Counter Loop
 task.spawn(function()
@@ -78,28 +78,28 @@ end)
 -- ===================================================
 -- TAB 2: FARMING
 -- ===================================================
-local BoxAutoTower = Tabs.Farming:AddLeftGroupbox("Auto Tower / Rebirth", "sword")
+local BoxAutoTower = Tabs.Farming:AddLeftGroupbox("Auto Tower / Rebirth", "sword")[span_12](start_span)[span_12](end_span)
 BoxAutoTower:AddToggle("AutoProgressionToggle", {
     Text = "Enable Auto Tower",
     Default = false,
     Callback = function(Value) getgenv().AutoProgression = Value end
-})
+})[span_13](start_span)[span_13](end_span)
 BoxAutoTower:AddInput("TowerDelayInput", {
     Text = "Tower Delay",
     Default = "1",
     Numeric = true,
     Finished = true,
     Callback = function(Value) getgenv().TowerDelay = tonumber(Value) or 1 end
-})
+})[span_14](start_span)[span_14](end_span)
 
--- Bagong Groupbox para sa Retreat Settings
-local BoxRetreatSettings = Tabs.Farming:AddLeftGroupbox("Strict Retreat Settings", "rotate-ccw")
-BoxRetreatSettings:AddToggle("EnableRetreatAtFloorToggle", {
+-- Idinagdag na direktang kasama sa Auto Tower Groupbox para sigurado
+BoxAutoTower:AddDivider()
+BoxAutoTower:AddToggle("EnableRetreatAtFloorToggle", {
     Text = "Enable Retreat at Floor",
     Default = false,
     Callback = function(Value) getgenv().EnableRetreatAtFloor = Value end
 })
-BoxRetreatSettings:AddInput("TargetRetreatFloorInput", {
+BoxAutoTower:AddInput("TargetRetreatFloorInput", {
     Text = "Target Retreat Floor",
     Default = "5",
     Numeric = true,
@@ -107,82 +107,82 @@ BoxRetreatSettings:AddInput("TargetRetreatFloorInput", {
     Callback = function(Value) getgenv().TargetRetreatFloor = tonumber(Value) or 5 end
 })
 
-local BoxExpandCoop = Tabs.Farming:AddLeftGroupbox("Expand Coop", "maximize-2")
+local BoxExpandCoop = Tabs.Farming:AddLeftGroupbox("Expand Coop", "maximize-2")[span_15](start_span)[span_15](end_span)
 BoxExpandCoop:AddToggle("ExpandCoopToggle", {
     Text = "Enable Expand Coop",
     Default = false,
     Callback = function(Value) getgenv().ExpandCoop = Value end
-})
+})[span_16](start_span)[span_16](end_span)
 BoxExpandCoop:AddInput("ExpandTargetLevelInput", {
     Text = "Expand Target Level",
     Default = "2",
     Numeric = true,
     Finished = true,
     Callback = function(Value) getgenv().ExpandTargetLevel = tonumber(Value) or 2 end
-})
+})[span_17](start_span)[span_17](end_span)
 
-local BoxGenerators = Tabs.Farming:AddRightGroupbox("Generator Management", "cpu")
+local BoxGenerators = Tabs.Farming:AddRightGroupbox("Generator Management", "cpu")[span_18](start_span)[span_18](end_span)
 BoxGenerators:AddToggle("BuyGeneratorToggle", {
     Text = "Enable Buy Generator",
     Default = false,
     Callback = function(Value) getgenv().BuyGenerator = Value end
-})
+})[span_19](start_span)[span_19](end_span)
 BoxGenerators:AddInput("AutoBuyGenTargetInput", {
     Text = "Target Generator Count (1-6)",
     Default = "2",
     Numeric = true,
     Finished = true,
     Callback = function(Value) getgenv().AutoBuyGenTarget = tonumber(Value) or 2 end
-})
+})[span_20](start_span)[span_20](end_span)
 
-BoxGenerators:AddDivider()
+BoxGenerators:AddDivider()[span_21](start_span)[span_21](end_span)
 
 BoxGenerators:AddToggle("UpgradeGeneratorToggle", {
     Text = "Enable Upgrade Generator",
     Default = false,
     Callback = function(Value) getgenv().UpgradeGenerator = Value end
-})
+})[span_22](start_span)[span_22](end_span)
 BoxGenerators:AddInput("UpgradeGenTargetInput", {
     Text = "Generator Target Level",
     Default = "10",
     Numeric = true,
     Finished = true,
     Callback = function(Value) getgenv().UpgradeGenTarget = tonumber(Value) or 10 end
-})
+})[span_23](start_span)[span_23](end_span)
 BoxGenerators:AddDropdown("UpgradeGeneratorMethodDropdown", {
     Values = { "Teleport", "Walk" },
     Default = "Teleport",
     Text = "Upgrade Method",
     Callback = function(Value) getgenv().UpgradeGeneratorMethod = Value end
-})
+})[span_24](start_span)[span_24](end_span)
 
-local BoxRecyclerEggs = Tabs.Farming:AddRightGroupbox("Recycler & Eggs", "refresh-cw")
+local BoxRecyclerEggs = Tabs.Farming:AddRightGroupbox("Recycler & Eggs", "refresh-cw")[span_25](start_span)[span_25](end_span)
 BoxRecyclerEggs:AddToggle("UpgradeRecyclerToggle", {
     Text = "Enable Upgrade Recycler",
     Default = false,
     Callback = function(Value) getgenv().UpgradeRecycler = Value end
-})
+})[span_26](start_span)[span_26](end_span)
 BoxRecyclerEggs:AddInput("UpgradeRecyclerTargetInput", {
     Text = "Recycler Target Level",
     Default = "10",
     Numeric = true,
     Finished = true,
     Callback = function(Value) getgenv().UpgradeRecyclerTarget = tonumber(Value) or 10 end
-})
+})[span_27](start_span)[span_27](end_span)
 
-BoxRecyclerEggs:AddDivider()
+BoxRecyclerEggs:AddDivider()[span_28](start_span)[span_28](end_span)
 
 BoxRecyclerEggs:AddToggle("AutoCollectEggToggle", {
     Text = "Enable Auto Collect Egg",
     Default = false,
     Callback = function(Value) getgenv().AutoCollectEgg = Value end
-})
+})[span_29](start_span)[span_29](end_span)
 BoxRecyclerEggs:AddDropdown("CollectEggMethodDropdown", {
     Values = { "Teleport", "Walk" },
     Default = "Teleport",
     Text = "Egg Collect Method",
     Callback = function(Value) getgenv().CollectEggMethod = Value end
-})
+})[span_30](start_span)[span_30](end_span)
 
 -- ===================================================
 -- AUTOMATION LOGIC LOOPS
@@ -195,7 +195,7 @@ task.spawn(function()
     local LocalPlayer = Players.LocalPlayer
     local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
 
-    local lastRetreatedRebirth = -1 -- Tracker para sa isang beses na retreat bawat rebirth
+    local lastRetreatedRebirth = -1
 
     while true do
         if getgenv().AutoProgression and Remotes then
@@ -222,8 +222,8 @@ task.spawn(function()
                     towerBest = DataController.towerBest
                 end
                 
-                LabelReqs:SetText("Requirements: Floor " .. tostring(reqFloor))
-                LabelHighestFloor:SetText("Highest Floor: " .. tostring(towerBest))
+                LabelReqs:SetText("Requirements: Floor " .. tostring(reqFloor))[span_31](start_span)[span_31](end_span)
+                LabelHighestFloor:SetText("Highest Floor: " .. tostring(towerBest))[span_32](start_span)[span_32](end_span)
 
                 local liveFloor = 0
                 pcall(function()
@@ -239,7 +239,7 @@ task.spawn(function()
                         end
                     end
                 end)
-                LabelCurrFloor:SetText("Current Floor: " .. tostring(liveFloor))
+                LabelCurrFloor:SetText("Current Floor: " .. tostring(liveFloor))[span_33](start_span)[span_33](end_span)
                 
                 local where = "corral"
                 pcall(function()
@@ -255,7 +255,7 @@ task.spawn(function()
                 
                 -- REBIRTH READY PRIORITY CHECK
                 if towerBest >= reqFloor and not isInTower then
-                    LabelActivity:SetText("Current Activity: Rebirthing")
+                    LabelActivity:SetText("Current Activity: Rebirthing")[span_34](start_span)[span_34](end_span)
                     local rebirthRemote = Remotes:FindFirstChild("Rebirth")
                     if rebirthRemote then
                         pcall(function()
@@ -268,7 +268,7 @@ task.spawn(function()
                 end
 
                 if towerBest >= reqFloor and isInTower then
-                    LabelActivity:SetText("Current Activity: Rebirth Ready - Retreating")
+                    LabelActivity:SetText("Current Activity: Rebirth Ready - Retreating")[span_35](start_span)[span_35](end_span)
                     pcall(function()
                         local retreatRemote = Remotes:FindFirstChild("TowerSurrender") or Remotes:FindFirstChild("Retreat") or Remotes:FindFirstChild("TowerRetreat")
                         if retreatRemote then
@@ -283,9 +283,9 @@ task.spawn(function()
                 -- STEP 4: STRICT CUSTOM RETREAT (Isang beses lang sa bawat Rebirth)
                 local targetRetreat = tonumber(getgenv().TargetRetreatFloor) or 5
                 if isInTower and getgenv().EnableRetreatAtFloor and liveFloor >= targetRetreat and lastRetreatedRebirth ~= currentRebirths then
-                    LabelActivity:SetText("Current Activity: Strict Retreat at Floor " .. tostring(liveFloor))
+                    LabelActivity:SetText("Current Activity: Strict Retreat at Floor " .. tostring(liveFloor))[span_36](start_span)[span_36](end_span)
                     
-                    lastRetreatedRebirth = currentRebirths -- I-lock para hindi na maulit sa parehong rebirth
+                    lastRetreatedRebirth = currentRebirths
 
                     pcall(function()
                         local retreatRemote = Remotes:FindFirstChild("TowerSurrender") or Remotes:FindFirstChild("Retreat") or Remotes:FindFirstChild("TowerRetreat")
@@ -300,20 +300,18 @@ task.spawn(function()
 
                 -- STEP 3: Akyat sa Tore (Climbing Tower) / STEP 1 & 2 (Delay & Enter)
                 if isInTower then
-                    LabelActivity:SetText("Current Activity: Climbing Tower: Floor " .. tostring(liveFloor))
+                    LabelActivity:SetText("Current Activity: Climbing Tower: Floor " .. tostring(liveFloor))[span_37](start_span)[span_37](end_span)
                 else
-                    -- STEP 1: Tower Delay (Countdown muna habang nasa labas)
                     local delayTime = tonumber(getgenv().TowerDelay) or 1
                     for i = delayTime, 1, -1 do
                         if not getgenv().AutoProgression then break end
-                        LabelActivity:SetText("Current Activity: Tower Delay (" .. i .. "s)")
+                        LabelActivity:SetText("Current Activity: Tower Delay (" .. i .. "s)")[span_38](start_span)[span_38](end_span)
                         task.wait(1)
                     end
                     
                     if not getgenv().AutoProgression then return end
 
-                    -- STEP 2: Pasok sa Tore (Entering Tower)
-                    LabelActivity:SetText("Current Activity: Entering Tower")
+                    LabelActivity:SetText("Current Activity: Entering Tower")[span_39](start_span)[span_39](end_span)
                     local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
                     if elevatorRemote then
                         pcall(function()
@@ -328,7 +326,7 @@ task.spawn(function()
                 end
             end)
         else
-            LabelActivity:SetText("Current Activity: Idle")
+            LabelActivity:SetText("Current Activity: Idle")[span_40](start_span)[span_40](end_span)
         end
         task.wait(1)
     end
@@ -539,24 +537,24 @@ end)
 -- ===================================================
 -- SETTINGS TAB
 -- ===================================================
-local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Menu & Config Management", "settings")
+local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Menu & Config Management", "settings")[span_41](start_span)[span_41](end_span)
 
-SettingsLeft:AddButton("Unload", function() Library:Unload() end)
-SettingsLeft:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "End", NoUI = true, Text = "Menu keybind" })
+SettingsLeft:AddButton("Unload", function() Library:Unload() end)[span_42](start_span)[span_42](end_span)
+SettingsLeft:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "End", NoUI = true, Text = "Menu keybind" })[span_43](start_span)[span_43](end_span)
 
 SettingsLeft:AddButton("Auto Rejoin", function()
     local ts = game:GetService("TeleportService")
     local p = game:GetService("Players").LocalPlayer
     ts:Teleport(game.PlaceId, p)
-end)
+end)[span_44](start_span)[span_44](end_span)
 
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
-SaveManager:SetFolder("MakiHubConfigs")
-SaveManager:BuildConfigSection(Tabs.Settings)
-ThemeManager:ApplyToTab(Tabs.Settings)
+ThemeManager:SetLibrary(Library)[span_45](start_span)[span_45](end_span)
+SaveManager:SetLibrary(Library)[span_46](start_span)[span_46](end_span)
+SaveManager:IgnoreThemeSettings()[span_47](start_span)[span_47](end_span)
+SaveManager:SetIgnoreIndexes({ "MenuKeybind" })[span_48](start_span)[span_48](end_span)
+SaveManager:SetFolder("MakiHubConfigs")[span_49](start_span)[span_49](end_span)
+SaveManager:BuildConfigSection(Tabs.Settings)[span_50](start_span)[span_50](end_span)
+ThemeManager:ApplyToTab(Tabs.Settings)[span_51](start_span)[span_51](end_span)
 
 task.spawn(function()
     pcall(function()

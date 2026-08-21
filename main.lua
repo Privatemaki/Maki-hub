@@ -25,6 +25,9 @@ getgenv().MakiHubTabs = Tabs
 -- ===================================================
 getgenv().AutoProgression = false
 getgenv().TowerDelay = 1
+getgenv().EnableRetreatAtFloor = false
+getgenv().TargetRetreatFloor = 5
+
 getgenv().ExpandCoop = false
 getgenv().ExpandTargetLevel = 2
 getgenv().BuyGenerator = false
@@ -87,6 +90,21 @@ BoxAutoTower:AddInput("TowerDelayInput", {
     Numeric = true,
     Finished = true,
     Callback = function(Value) getgenv().TowerDelay = tonumber(Value) or 1 end
+})
+
+-- Bagong Groupbox para sa Retreat Settings
+local BoxRetreatSettings = Tabs.Farming:AddLeftGroupbox("Strict Retreat Settings", "rotate-ccw")
+BoxRetreatSettings:AddToggle("EnableRetreatAtFloorToggle", {
+    Text = "Enable Retreat at Floor",
+    Default = false,
+    Callback = function(Value) getgenv().EnableRetreatAtFloor = Value end
+})
+BoxRetreatSettings:AddInput("TargetRetreatFloorInput", {
+    Text = "Target Retreat Floor",
+    Default = "5",
+    Numeric = true,
+    Finished = true,
+    Callback = function(Value) getgenv().TargetRetreatFloor = tonumber(Value) or 5 end
 })
 
 local BoxExpandCoop = Tabs.Farming:AddLeftGroupbox("Expand Coop", "maximize-2")
@@ -170,12 +188,14 @@ BoxRecyclerEggs:AddDropdown("CollectEggMethodDropdown", {
 -- AUTOMATION LOGIC LOOPS
 -- ===================================================
 
--- Tower & Rebirth Loop
+-- 5-Step Tower & Rebirth Loop (Strict 1-time Retreat per Rebirth)
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
     local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+
+    local lastRetreatedRebirth = -1 -- Tracker para sa isang beses na retreat bawat rebirth
 
     while true do
         if getgenv().AutoProgression and Remotes then
@@ -231,33 +251,11 @@ task.spawn(function()
                     end
                 end)
                 
-                local isInTower = (where == "campaign" or where == "tower")
+                local isInTower = (where == "campaign" or where == "tower" or liveFloor > 0)
                 
-                if (liveFloor > 0 and liveFloor < reqFloor) or (towerBest < reqFloor and not isInTower) then
-                    LabelActivity:SetText("Current Activity: Climbing Tower")
-                    if not isInTower then
-                        local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
-                        if elevatorRemote then
-                            pcall(function()
-                                if elevatorRemote:IsA("RemoteFunction") then elevatorRemote:InvokeServer(towerBest)
-                                else elevatorRemote:FireServer(towerBest) end
-                            end)
-                        end
-                        task.wait(0.5)
-                        local startRemote = Remotes:FindFirstChild("TowerStart")
-                        if startRemote then pcall(function() startRemote:InvokeServer() end) end
-                        task.wait(getgenv().TowerDelay or 1)
-                    end
-                else
+                -- REBIRTH READY PRIORITY CHECK
+                if towerBest >= reqFloor and not isInTower then
                     LabelActivity:SetText("Current Activity: Rebirthing")
-                    pcall(function()
-                        local retreatRemote = Remotes:FindFirstChild("TowerSurrender") or Remotes:FindFirstChild("Retreat") or Remotes:FindFirstChild("TowerRetreat")
-                        if retreatRemote then
-                            if retreatRemote:IsA("RemoteFunction") then retreatRemote:InvokeServer()
-                            else retreatRemote:FireServer() end
-                        end
-                    end)
-                    task.wait(3)
                     local rebirthRemote = Remotes:FindFirstChild("Rebirth")
                     if rebirthRemote then
                         pcall(function()
@@ -266,12 +264,73 @@ task.spawn(function()
                         end)
                     end
                     task.wait(4)
+                    return
+                end
+
+                if towerBest >= reqFloor and isInTower then
+                    LabelActivity:SetText("Current Activity: Rebirth Ready - Retreating")
+                    pcall(function()
+                        local retreatRemote = Remotes:FindFirstChild("TowerSurrender") or Remotes:FindFirstChild("Retreat") or Remotes:FindFirstChild("TowerRetreat")
+                        if retreatRemote then
+                            if retreatRemote:IsA("RemoteFunction") then retreatRemote:InvokeServer()
+                            else retreatRemote:FireServer() end
+                        end
+                    end)
+                    task.wait(3)
+                    return
+                end
+
+                -- STEP 4: STRICT CUSTOM RETREAT (Isang beses lang sa bawat Rebirth)
+                local targetRetreat = tonumber(getgenv().TargetRetreatFloor) or 5
+                if isInTower and getgenv().EnableRetreatAtFloor and liveFloor >= targetRetreat and lastRetreatedRebirth ~= currentRebirths then
+                    LabelActivity:SetText("Current Activity: Strict Retreat at Floor " .. tostring(liveFloor))
+                    
+                    lastRetreatedRebirth = currentRebirths -- I-lock para hindi na maulit sa parehong rebirth
+
+                    pcall(function()
+                        local retreatRemote = Remotes:FindFirstChild("TowerSurrender") or Remotes:FindFirstChild("Retreat") or Remotes:FindFirstChild("TowerRetreat")
+                        if retreatRemote then
+                            if retreatRemote:IsA("RemoteFunction") then retreatRemote:InvokeServer()
+                            else retreatRemote:FireServer() end
+                        end
+                    end)
+                    task.wait(3)
+                    return
+                end
+
+                -- STEP 3: Akyat sa Tore (Climbing Tower) / STEP 1 & 2 (Delay & Enter)
+                if isInTower then
+                    LabelActivity:SetText("Current Activity: Climbing Tower: Floor " .. tostring(liveFloor))
+                else
+                    -- STEP 1: Tower Delay (Countdown muna habang nasa labas)
+                    local delayTime = tonumber(getgenv().TowerDelay) or 1
+                    for i = delayTime, 1, -1 do
+                        if not getgenv().AutoProgression then break end
+                        LabelActivity:SetText("Current Activity: Tower Delay (" .. i .. "s)")
+                        task.wait(1)
+                    end
+                    
+                    if not getgenv().AutoProgression then return end
+
+                    -- STEP 2: Pasok sa Tore (Entering Tower)
+                    LabelActivity:SetText("Current Activity: Entering Tower")
+                    local elevatorRemote = Remotes:FindFirstChild("TowerElevator")
+                    if elevatorRemote then
+                        pcall(function()
+                            if elevatorRemote:IsA("RemoteFunction") then elevatorRemote:InvokeServer(towerBest)
+                            else elevatorRemote:FireServer(towerBest) end
+                        end)
+                    end
+                    task.wait(0.5)
+                    local startRemote = Remotes:FindFirstChild("TowerStart")
+                    if startRemote then pcall(function() startRemote:InvokeServer() end) end
+                    task.wait(1.5)
                 end
             end)
         else
             LabelActivity:SetText("Current Activity: Idle")
         end
-        task.wait(2)
+        task.wait(1)
     end
 end)
 
@@ -399,7 +458,7 @@ task.spawn(function()
     local declineEvent = remotes:WaitForChild("TowerContinueDecline", 10)
 
     if continueOfferEvent and declineEvent then
-        continueOfferEvent.OnClientEvent:Connect(function(...)
+        continueOfferEvent.OnClientEvent:Connect(function()
             task.wait(0.05)
             declineEvent:FireServer()
         end)
@@ -407,7 +466,7 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- AUTO-ACTIVE AFK COOP GUARD (Safe / No WalkSpeed Change)
+-- AUTO-ACTIVE AFK COOP GUARD
 -- ===================================================
 task.spawn(function()
     local Players = game:GetService("Players")
@@ -463,7 +522,6 @@ task.spawn(function()
             if targetPosition and currentCharacter and currentRoot and currentHumanoid and not isReturning then
                 if (currentRoot.Position - targetPosition).Magnitude > allowedDistance then
                     isReturning = true
-                    -- Tinanggal na ang WalkSpeed modification para ligtas sa ban
                     currentHumanoid:MoveTo(targetPosition)
                     
                     local reached = false

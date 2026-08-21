@@ -92,13 +92,14 @@ BoxAutoTower:AddInput("TowerDelayInput", {
     Callback = function(Value) getgenv().TowerDelay = tonumber(Value) or 1 end
 })
 
-BoxAutoTower:AddDivider()
-BoxAutoTower:AddToggle("EnableRetreatAtFloorToggle", {
+-- Hiwalay at malinaw na Box para hindi mawala sa UI
+local BoxRetreat = Tabs.Farming:AddLeftGroupbox("Tower Retreat Settings", "rotate-ccw")
+BoxRetreat:AddToggle("EnableRetreatAtFloorToggle", {
     Text = "Enable Retreat at Floor",
     Default = false,
     Callback = function(Value) getgenv().EnableRetreatAtFloor = Value end
 })
-BoxAutoTower:AddInput("TargetRetreatFloorInput", {
+BoxRetreat:AddInput("TargetRetreatFloorInput", {
     Text = "Target Retreat Floor",
     Default = "5",
     Numeric = true,

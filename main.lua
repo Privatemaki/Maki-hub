@@ -463,74 +463,63 @@ task.spawn(function()
     end
 end)
 
--- ===================================================
--- AUTO-ACTIVE AFK COOP GUARD
--- ===================================================
-task.spawn(function()
-    local Players = game:GetService("Players")
-    local Workspace = game:GetService("Workspace")
-    local localPlayer = Players.LocalPlayer
+-- ==================== AUTOMATIC AUTO WALK (NO TOGGLE NEEDED) ====================
+local StopDistance = 3 -- Gaano ka-dikit sa feeder (in studs). Kung lumayo ka lampas dito, babalik agad.
 
-    local allowedDistance = 2 
-    local forwardOffsetDistance = 4 
-    local isReturning = false
-
-    local function findMyCoopCenter()
-        local coopsFolder = Workspace:FindFirstChild("Coops")
-        if not coopsFolder then return nil end
-        
-        for _, coop in ipairs(coopsFolder:GetChildren()) do
-            for _, desc in ipairs(coop:GetDescendants()) do
-                if desc:IsA("TextLabel") and string.find(desc.Text, localPlayer.Name) then
-                    return (coop:IsA("Model") and coop:GetBoundingBox().Position) or (coop:IsA("BasePart") and coop.Position)
-                end
-            end
-        end
-        local root = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            local nearestPos, shortestDist = nil, math.huge
-            for _, coop in ipairs(coopsFolder:GetChildren()) do
-                local pos = (coop:IsA("Model") and coop:GetBoundingBox().Position) or (coop:IsA("BasePart") and coop.Position)
-                if pos and (root.Position - pos).Magnitude < shortestDist then
-                    shortestDist = (root.Position - pos).Magnitude
-                    nearestPos = pos
-                end
-            end
-            return nearestPos
-        end
-        return nil
+WalkGroup:AddInput("StopDistanceInput", {
+    Default = tostring(StopDistance),
+    Numeric = true,
+    Finished = true,
+    Text = "🎯 Stop Distance",
+    Tooltip = "Gaano ka-dikit sa feeder bago tumigil",
+    Callback = function(Value)
+        StopDistance = tonumber(Value) or 3
     end
+})
 
-    task.wait(5)
-    
-    local baseCoopPosition = nil
-    repeat task.wait(1) baseCoopPosition = findMyCoopCenter() until baseCoopPosition
-    
+-- Eto na yung mismong auto-walk na tatakbo agad pagka-execute ng script:
+task.spawn(function()
     while true do
-        task.wait(0.5)
-        local character = localPlayer.Character
-        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-        
-        if baseCoopPosition and rootPart then
-            local targetPosition = baseCoopPosition + Vector3.new(rootPart.CFrame.LookVector.X, 0, rootPart.CFrame.LookVector.Z).Unit * forwardOffsetDistance
-            local currentCharacter = localPlayer.Character
-            local currentHumanoid = currentCharacter and currentCharacter:FindFirstChildOfClass("Humanoid")
-            local currentRoot = currentCharacter and currentCharacter:FindFirstChild("HumanoidRootPart")
+        pcall(function()
+            local character = LocalPlayer.Character
+            local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
             
-            if targetPosition and currentCharacter and currentRoot and currentHumanoid and not isReturning then
-                if (currentRoot.Position - targetPosition).Magnitude > allowedDistance then
-                    isReturning = true
-                    currentHumanoid:MoveTo(targetPosition)
+            if humanoidRootPart and humanoid then
+                local coops = workspace:FindFirstChild("Coops")
+                local coopUI = coops and coops:FindFirstChild("CoopUI")
+                local feeder = coopUI and coopUI:FindFirstChild("Feeder")
+                
+                if feeder then
+                    local targetPos = nil
                     
-                    local reached = false
-                    local conn = currentHumanoid.MoveToFinished:Connect(function() reached = true end)
-                    repeat task.wait(0.1) until reached or (currentRoot.Position - targetPosition).Magnitude < 1
-                    conn:Disconnect()
+                    if feeder:IsA("BasePart") then
+                        targetPos = feeder.Position
+                    elseif feeder:IsA("Model") then
+                        if feeder.PrimaryPart then
+                            targetPos = feeder.PrimaryPart.Position
+                        else
+                            local firstPart = feeder:FindFirstChildWhichIsA("BasePart", true)
+                            if firstPart then
+                                targetPos = firstPart.Position
+                            end
+                        end
+                    end
                     
-                    isReturning = false
+                    if targetPos then
+                        local distance = (humanoidRootPart.Position - targetPos).Magnitude
+                        
+                        -- Kung lumayo ka ng higit sa StopDistance, babalik siya agad sa feeder
+                        if distance > StopDistance then
+                            humanoid:MoveTo(targetPos)
+                        else
+                            humanoid:MoveTo(humanoidRootPart.Position)
+                        end
+                    end
                 end
             end
-        end
+        end)
+        task.wait(0.2)
     end
 end)
 

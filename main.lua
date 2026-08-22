@@ -14,6 +14,7 @@ local Window = Library:CreateWindow({
 local Tabs = {
     Info = Window:AddTab("Info", "info"),
     Farming = Window:AddTab("Farming", "sprout"),
+    Misc = Window:AddTab("Misc", "flask"), -- Dito ilalagay ang Auto Fuse at Auto Walk
     Settings = Window:AddTab("Settings", "settings"),
 }
 
@@ -39,6 +40,14 @@ getgenv().UpgradeRecycler = false
 getgenv().UpgradeRecyclerTarget = 10
 getgenv().AutoCollectEgg = false
 getgenv().CollectEggMethod = "Teleport"
+
+-- Auto Fuse & Auto Walk Variables
+_G.AutoFuseEnabled = false
+_G.SlotA = ""
+_G.SlotB = ""
+_G.IgnoreFavorite = true
+_G.TargetRarity = "All"
+_G.StopDistance = 3
 
 -- ===================================================
 -- TAB 1: INFO
@@ -92,7 +101,6 @@ BoxAutoTower:AddInput("TowerDelayInput", {
     Callback = function(Value) getgenv().TowerDelay = tonumber(Value) or 1 end
 })
 
--- Hiwalay at malinaw na Box para hindi mawala sa UI
 local BoxRetreat = Tabs.Farming:AddLeftGroupbox("Tower Retreat Settings", "rotate-ccw")
 BoxRetreat:AddToggle("EnableRetreatAtFloorToggle", {
     Text = "Enable Retreat at Floor",
@@ -185,10 +193,235 @@ BoxRecyclerEggs:AddDropdown("CollectEggMethodDropdown", {
 })
 
 -- ===================================================
--- AUTOMATION LOGIC LOOPS
+-- TAB 3: MISC (AUTO FUSE & AUTO WALK)
+-- ===================================================
+local FuseGroup = Tabs.Misc:AddLeftGroupbox("🔍 Pet Fusion Settings", "flask")
+local WalkGroup = Tabs.Misc:AddRightGroupbox("🚶 Feeder Auto Walk", "navigation")
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function formatPetName(str)
+    if not str then return "Unknown Pet" end
+    local formatted = string.gsub(str, "_", " ")
+    formatted = string.gsub(formatted, "^%l", string.upper)
+    formatted = string.gsub(formatted, " %l", function(s) return " " .. string.upper(s:sub(2)) end)
+    return formatted
+end
+
+local function formatTypeId(name)
+    return string.lower(string.gsub(name, "%s+", "_"))
+end
+
+local function getPetRarityString(v)
+    local rawRarity = v.rarity or v.Tier or v.Rarity or v.rarityName or "Common"
+    if type(rawRarity) == "number" then
+        local rarityMap = { [1] = "common", [2] = "uncommon", [3] = "rare", [4] = "epic", [5] = "legendary" }
+        rawRarity = rarityMap[rawRarity] or "common"
+    end
+    return tostring(rawRarity):lower()
+end
+
+local function isValidPet(v)
+    if type(v) ~= "table" or not rawget(v, "id") or not rawget(v, "typeId") then 
+        return false 
+    end
+    
+    if _G.IgnoreFavorite and v.isFavorite then
+        return false
+    end
+    
+    if _G.TargetRarity ~= "all" and _G.TargetRarity ~= "All" then
+        local petRarity = getPetRarityString(v)
+        if petRarity ~= string.lower(_G.TargetRarity) then
+            return false
+        end
+    end
+    
+    return true
+end
+
+local function getAvailableChickens()
+    local petsTable = {}
+    local addedPets = {}
+    
+    pcall(function()
+        for _, v in pairs(getgc(true)) do
+            if isValidPet(v) then
+                local petName = formatPetName(v.typeId)
+                if not addedPets[petName] then
+                    addedPets[petName] = true
+                    table.insert(petsTable, petName)
+                end
+            end
+        end
+    end)
+    
+    if #petsTable > 0 then
+        return petsTable
+    end
+    return {"Zombie Chick", "Wrapped Hen", "Creepy Clown", "Bone Rooster", "Jack Rooster"}
+end
+
+local function findChickenId(targetName, excludeId)
+    local targetType = formatTypeId(targetName)
+    local foundId = nil
+    
+    pcall(function()
+        for _, v in pairs(getgc(true)) do
+            if isValidPet(v) and v.id ~= excludeId then
+                if string.lower(tostring(v.typeId)) == targetType then
+                    local petRarity = getPetRarityString(v)
+                    local selectedRarity = string.lower(_G.TargetRarity)
+                    
+                    if selectedRarity == "all" or petRarity == selectedRarity then
+                        foundId = v.id
+                        break
+                    end
+                end
+            end
+        end
+    end)
+    
+    return foundId
+end
+
+-- Auto Fuse UI Controls inside Misc Tab
+FuseGroup:AddToggle("AutoFuseKey", {
+    Text = "⚡ Auto Fuse",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoFuseEnabled = Value
+        if Value then
+            task.spawn(function()
+                local FuseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("FuseChickens")
+                while _G.AutoFuseEnabled do
+                    pcall(function()
+                        if _G.SlotA ~= "" and _G.SlotB ~= "" then
+                            local idA = findChickenId(_G.SlotA, nil)
+                            local idB = findChickenId(_G.SlotB, idA)
+                            
+                            if idA and idB then
+                                task.spawn(function()
+                                    FuseRemote:InvokeServer(idA, idB, {}, nil, "a")
+                                end)
+                            end
+                        end
+                    end)
+                    task.wait(0.4)
+                end
+            end)
+        end
+    end
+})
+
+FuseGroup:AddToggle("IgnoreFavKey", {
+    Text = "🔒 Ignore Favorite Chicken",
+    Default = true,
+    Callback = function(Value)
+        _G.IgnoreFavorite = Value
+    end
+})
+
+FuseGroup:AddDropdown("RarityDropdown", {
+    Values = {"All", "Common", "Uncommon", "Rare", "Epic", "Legendary"},
+    Default = 1,
+    Text = "📊 Rarity Filter",
+    Callback = function(Value) 
+        _G.TargetRarity = Value 
+    end
+})
+
+local initialPets = getAvailableChickens()
+_G.SlotA = initialPets[1] or ""
+_G.SlotB = initialPets[1] or ""
+
+local SlotADrop = FuseGroup:AddDropdown("SlotADropdown", {
+    Values = initialPets,
+    Default = 1,
+    Text = "Pet Slot A",
+    Searchable = true,
+    Callback = function(Value) _G.SlotA = Value end
+})
+
+local SlotBDrop = FuseGroup:AddDropdown("SlotBDropdown", {
+    Values = initialPets,
+    Default = 1,
+    Text = "Pet Slot B",
+    Searchable = true,
+    Callback = function(Value) _G.SlotB = Value end
+})
+
+FuseGroup:AddButton("🔄 Refresh Inventory", function()
+    pcall(function()
+        local updatedList = getAvailableChickens()
+        SlotADrop:SetValues(updatedList)
+        SlotBDrop:SetValues(updatedList)
+        Library:Notify({ Title = "Inventory Refreshed", Content = "Na-update na ang mga listahan ng manok!", Duration = 2 })
+    end)
+end)
+
+-- Auto Walk Feeder UI & Direct Execution Logic
+WalkGroup:AddInput("StopDistanceInput", {
+    Default = "3",
+    Numeric = true,
+    Finished = true,
+    Text = "🎯 Stop Distance",
+    Tooltip = "Gaano ka-dikit sa feeder bago tumigil",
+    Callback = function(Value)
+        _G.StopDistance = tonumber(Value) or 3
+    end
+})
+
+task.spawn(function()
+    while true do
+        pcall(function()
+            local character = LocalPlayer.Character
+            local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            
+            if humanoidRootPart and humanoid then
+                local coops = workspace:FindFirstChild("Coops")
+                local coopUI = coops and coops:FindFirstChild("CoopUI")
+                local feeder = coopUI and coopUI:FindFirstChild("Feeder")
+                
+                if feeder then
+                    local targetPos = nil
+                    
+                    if feeder:IsA("BasePart") then
+                        targetPos = feeder.Position
+                    elseif feeder:IsA("Model") then
+                        if feeder.PrimaryPart then
+                            targetPos = feeder.PrimaryPart.Position
+                        else
+                            local firstPart = feeder:FindFirstChildWhichIsA("BasePart", true)
+                            if firstPart then
+                                targetPos = firstPart.Position
+                            end
+                        end
+                    end
+                    
+                    if targetPos then
+                        local distance = (humanoidRootPart.Position - targetPos).Magnitude
+                        
+                        if distance > _G.StopDistance then
+                            humanoid:MoveTo(targetPos)
+                        else
+                            humanoid:MoveTo(humanoidRootPart.Position)
+                        end
+                    end
+                end
+            end
+        end)
+        task.wait(0.2)
+    end
+end)
+
+-- ===================================================
+-- AUTOMATION LOGIC LOOPS (TOWER & GENERATOR)
 -- ===================================================
 
--- 5-Step Tower & Rebirth Loop (Strict 1-time Retreat per Rebirth)
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
@@ -253,7 +486,6 @@ task.spawn(function()
                 
                 local isInTower = (where == "campaign" or where == "tower" or liveFloor > 0)
                 
-                -- REBIRTH READY PRIORITY CHECK
                 if towerBest >= reqFloor and not isInTower then
                     LabelActivity:SetText("Current Activity: Rebirthing")
                     local rebirthRemote = Remotes:FindFirstChild("Rebirth")
@@ -280,11 +512,9 @@ task.spawn(function()
                     return
                 end
 
-                -- STEP 4: STRICT CUSTOM RETREAT (Isang beses lang sa bawat Rebirth)
                 local targetRetreat = tonumber(getgenv().TargetRetreatFloor) or 5
                 if isInTower and getgenv().EnableRetreatAtFloor and liveFloor >= targetRetreat and lastRetreatedRebirth ~= currentRebirths then
                     LabelActivity:SetText("Current Activity: Strict Retreat at Floor " .. tostring(liveFloor))
-                    
                     lastRetreatedRebirth = currentRebirths
 
                     pcall(function()
@@ -298,7 +528,6 @@ task.spawn(function()
                     return
                 end
 
-                -- STEP 3: Akyat sa Tore (Climbing Tower) / STEP 1 & 2 (Delay & Enter)
                 if isInTower then
                     LabelActivity:SetText("Current Activity: Climbing Tower: Floor " .. tostring(liveFloor))
                 else
@@ -332,7 +561,6 @@ task.spawn(function()
     end
 end)
 
--- Ultra-Fast Generator Upgrade Loop
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
@@ -444,9 +672,6 @@ task.spawn(function()
     end
 end)
 
--- ===================================================
--- SAFE AUTO TOWER CONTINUE DECLINER (Targeted Only)
--- ===================================================
 task.spawn(function()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local remotes = ReplicatedStorage:WaitForChild("Remotes", 10)
@@ -460,66 +685,6 @@ task.spawn(function()
             task.wait(0.05)
             declineEvent:FireServer()
         end)
-    end
-end)
-
--- ==================== AUTOMATIC AUTO WALK (NO TOGGLE NEEDED) ====================
-local StopDistance = 3 -- Gaano ka-dikit sa feeder (in studs). Kung lumayo ka lampas dito, babalik agad.
-
-WalkGroup:AddInput("StopDistanceInput", {
-    Default = tostring(StopDistance),
-    Numeric = true,
-    Finished = true,
-    Text = "🎯 Stop Distance",
-    Tooltip = "Gaano ka-dikit sa feeder bago tumigil",
-    Callback = function(Value)
-        StopDistance = tonumber(Value) or 3
-    end
-})
-
--- Eto na yung mismong auto-walk na tatakbo agad pagka-execute ng script:
-task.spawn(function()
-    while true do
-        pcall(function()
-            local character = LocalPlayer.Character
-            local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
-            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-            
-            if humanoidRootPart and humanoid then
-                local coops = workspace:FindFirstChild("Coops")
-                local coopUI = coops and coops:FindFirstChild("CoopUI")
-                local feeder = coopUI and coopUI:FindFirstChild("Feeder")
-                
-                if feeder then
-                    local targetPos = nil
-                    
-                    if feeder:IsA("BasePart") then
-                        targetPos = feeder.Position
-                    elseif feeder:IsA("Model") then
-                        if feeder.PrimaryPart then
-                            targetPos = feeder.PrimaryPart.Position
-                        else
-                            local firstPart = feeder:FindFirstChildWhichIsA("BasePart", true)
-                            if firstPart then
-                                targetPos = firstPart.Position
-                            end
-                        end
-                    end
-                    
-                    if targetPos then
-                        local distance = (humanoidRootPart.Position - targetPos).Magnitude
-                        
-                        -- Kung lumayo ka ng higit sa StopDistance, babalik siya agad sa feeder
-                        if distance > StopDistance then
-                            humanoid:MoveTo(targetPos)
-                        else
-                            humanoid:MoveTo(humanoidRootPart.Position)
-                        end
-                    end
-                end
-            end
-        end)
-        task.wait(0.2)
     end
 end)
 

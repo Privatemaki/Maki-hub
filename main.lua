@@ -1,4 +1,4 @@
-local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
+local repo = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
 local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
@@ -159,7 +159,7 @@ BoxGenerators:AddInput("UpgradeGenTargetInput", {
 })
 BoxGenerators:AddDropdown("UpgradeGeneratorMethodDropdown", {
     Values = { "Teleport", "Walk" },
-    Default = "Teleport",
+    Default = 1,
     Text = "Upgrade Method",
     Callback = function(Value) getgenv().UpgradeGeneratorMethod = Value end
 })
@@ -187,7 +187,7 @@ BoxRecyclerEggs:AddToggle("AutoCollectEggToggle", {
 })
 BoxRecyclerEggs:AddDropdown("CollectEggMethodDropdown", {
     Values = { "Teleport", "Walk" },
-    Default = "Teleport",
+    Default = 1,
     Text = "Egg Collect Method",
     Callback = function(Value) getgenv().CollectEggMethod = Value end
 })
@@ -195,8 +195,8 @@ BoxRecyclerEggs:AddDropdown("CollectEggMethodDropdown", {
 -- ===================================================
 -- TAB 3: MISC (AUTO FUSE & AUTO WALK)
 -- ===================================================
-local FuseGroup = Tabs.Misc:AddLeftGroupbox("🔍 Pet Fusion Settings", "flask")
-local WalkGroup = Tabs.Misc:AddRightGroupbox("🚶 Feeder Auto Walk", "navigation")
+local FuseGroup = Tabs.Misc:AddLeftGroupbox("Pet Fusion Settings", "flask")
+local WalkGroup = Tabs.Misc:AddRightGroupbox("Feeder Auto Walk", "navigation")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -289,7 +289,7 @@ end
 
 -- Auto Fuse UI Controls inside Misc Tab
 FuseGroup:AddToggle("AutoFuseKey", {
-    Text = "⚡ Auto Fuse",
+    Text = "Auto Fuse",
     Default = false,
     Callback = function(Value)
         _G.AutoFuseEnabled = Value
@@ -317,7 +317,7 @@ FuseGroup:AddToggle("AutoFuseKey", {
 })
 
 FuseGroup:AddToggle("IgnoreFavKey", {
-    Text = "🔒 Ignore Favorite Chicken",
+    Text = "Ignore Favorite Chicken",
     Default = true,
     Callback = function(Value)
         _G.IgnoreFavorite = Value
@@ -327,7 +327,7 @@ FuseGroup:AddToggle("IgnoreFavKey", {
 FuseGroup:AddDropdown("RarityDropdown", {
     Values = {"All", "Common", "Uncommon", "Rare", "Epic", "Legendary"},
     Default = 1,
-    Text = "📊 Rarity Filter",
+    Text = "Rarity Filter",
     Callback = function(Value) 
         _G.TargetRarity = Value 
     end
@@ -341,7 +341,7 @@ local SlotADrop = FuseGroup:AddDropdown("SlotADropdown", {
     Values = initialPets,
     Default = 1,
     Text = "Pet Slot A",
-    Searchable = true,
+    AllowNull = true,
     Callback = function(Value) _G.SlotA = Value end
 })
 
@@ -349,16 +349,16 @@ local SlotBDrop = FuseGroup:AddDropdown("SlotBDropdown", {
     Values = initialPets,
     Default = 1,
     Text = "Pet Slot B",
-    Searchable = true,
+    AllowNull = true,
     Callback = function(Value) _G.SlotB = Value end
 })
 
-FuseGroup:AddButton("🔄 Refresh Inventory", function()
+FuseGroup:AddButton("Refresh Inventory", function()
     pcall(function()
         local updatedList = getAvailableChickens()
         SlotADrop:SetValues(updatedList)
         SlotBDrop:SetValues(updatedList)
-        Library:Notify({ Title = "Inventory Refreshed", Content = "Na-update na ang mga listahan ng manok!", Duration = 2 })
+        Library:Notify("Na-update na ang mga listahan ng manok!", 2)
     end)
 end)
 
@@ -367,7 +367,7 @@ WalkGroup:AddInput("StopDistanceInput", {
     Default = "3",
     Numeric = true,
     Finished = true,
-    Text = "🎯 Stop Distance",
+    Text = "Stop Distance",
     Tooltip = "Gaano ka-dikit sa feeder bago tumigil",
     Callback = function(Value)
         _G.StopDistance = tonumber(Value) or 3
@@ -691,7 +691,7 @@ end)
 -- ===================================================
 -- SETTINGS TAB
 -- ===================================================
-local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Menu & Config Management", "settings")
+local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Menu & Config Management")
 
 SettingsLeft:AddButton("Unload", function() Library:Unload() end)
 SettingsLeft:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "End", NoUI = true, Text = "Menu keybind" })

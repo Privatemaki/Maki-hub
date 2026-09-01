@@ -689,26 +689,37 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- PURE INF YIELD STYLE AUTO REJOIN (NO COREGUI)
+-- EXACT INF YIELD STYLE AUTO REJOIN (ERROR MESSAGE HANDLER)
 -- ===================================================
 getgenv().AutoReconnect = true
 
 task.spawn(function()
     local TeleportService = game:GetService("TeleportService")
+    local GuiService = game:GetService("GuiService")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
 
-    -- 1. TeleportInitFailed error handler (Core ng Inf Yield style)
-    TeleportService.TeleportInitFailed:Connect(function(player, result, errorMessage)
-        if getgenv().AutoReconnect and player == LocalPlayer then
-            task.wait(2)
-            pcall(function()
-                TeleportService:Teleport(game.PlaceId, LocalPlayer)
-            end)
+    -- Inf Yield style error message monitor
+    GuiService.ErrorMessageChanged:Connect(function()
+        if getgenv().AutoReconnect then
+            local err = GuiService:GetErrorMessage()
+            if err ~= "" then
+                -- Habang may error o nawalan ng internet, abangan natin ang pagbalik
+                repeat
+                    task.wait(1)
+                    err = GuiService:GetErrorMessage()
+                until err == "" or not getgenv().AutoReconnect
+                
+                -- Kapag nawala na ang error message (ibig sabihin nag-kawi-fi na o nag-ayos na), rejoin agad
+                task.wait(1)
+                pcall(function()
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                end)
+            end
         end
     end)
 
-    -- 2. Direct player status safety check (Kapag tuluyang nawala sa server)
+    -- Extra safety check kung sakaling mapatalsik sa server list
     while true do
         if getgenv().AutoReconnect then
             pcall(function()

@@ -689,7 +689,7 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- EXACT INF YIELD STYLE AUTO REJOIN (ERROR MESSAGE HANDLER)
+-- MAKIHUB AUTO RECONNECT (INF YIELD STYLE)
 -- ===================================================
 getgenv().AutoReconnect = true
 
@@ -699,18 +699,17 @@ task.spawn(function()
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
 
-    -- Inf Yield style error message monitor
     GuiService.ErrorMessageChanged:Connect(function()
         if getgenv().AutoReconnect then
             local err = GuiService:GetErrorMessage()
             if err ~= "" then
-                -- Habang may error o nawalan ng internet, abangan natin ang pagbalik
+                -- Hihinto muna habang nawalan ng net o may error
                 repeat
                     task.wait(1)
                     err = GuiService:GetErrorMessage()
                 until err == "" or not getgenv().AutoReconnect
                 
-                -- Kapag nawala na ang error message (ibig sabihin nag-kawi-fi na o nag-ayos na), rejoin agad
+                -- Kapag bumalik na ang net at nawala ang error, rejoin agad
                 task.wait(1)
                 pcall(function()
                     TeleportService:Teleport(game.PlaceId, LocalPlayer)
@@ -718,18 +717,6 @@ task.spawn(function()
             end
         end
     end)
-
-    -- Extra safety check kung sakaling mapatalsik sa server list
-    while true do
-        if getgenv().AutoReconnect then
-            pcall(function()
-                if not LocalPlayer:IsDescendantOf(Players) then
-                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
-                end
-            end)
-        end
-        task.wait(3)
-    end
 end)
 
 -- ===================================================

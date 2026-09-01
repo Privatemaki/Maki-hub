@@ -689,7 +689,7 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- INFINITE YIELD EXACT AUTOREJ COMMAND/LISTENER
+-- INFINITE YIELD EXACT AUTO REJOIN IMPLEMENTATION
 -- ===================================================
 getgenv().AutoReconnect = true
 
@@ -698,22 +698,52 @@ task.spawn(function()
     local TeleportService = game:GetService("TeleportService")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
+    local PlaceId = game.PlaceId
+    local JobId = game.JobId
 
+    local function executeRejoin()
+        pcall(function()
+            if #Players:GetPlayers() <= 1 then
+                TeleportService:Teleport(PlaceId, LocalPlayer)
+            else
+                TeleportService:TeleportToPlaceInstance(PlaceId, JobId, LocalPlayer)
+            end
+        end)
+    end
+
+    -- 1. Inf Yield original ErrorMessageChanged listener
     GuiService.ErrorMessageChanged:Connect(function()
         if getgenv().AutoReconnect then
             local err = GuiService:GetErrorMessage()
             if err ~= "" then
                 task.wait(1)
-                pcall(function()
-                    if #Players:GetPlayers() <= 1 then
-                        TeleportService:Teleport(game.PlaceId, LocalPlayer)
-                    else
-                        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
-                    end
-                end)
+                executeRejoin()
             end
         end
     end)
+
+    -- 2. Mobile fallback sakaling hindi maabutan ng GuiService ang Error 772/277 prompt
+    local CoreGui = game:GetService("CoreGui")
+    pcall(function()
+        CoreGui.ChildAdded:Connect(function(child)
+            if getgenv().AutoReconnect and (child.Name == "RobloxPromptGui" or child.Name == "ErrorPrompt") then
+                task.wait(1.5)
+                executeRejoin()
+            end
+        end)
+    end)
+
+    -- 3. Safety player descendant check
+    while true do
+        if getgenv().AutoReconnect then
+            pcall(function()
+                if not LocalPlayer:IsDescendantOf(Players) then
+                    executeRejoin()
+                end
+            end)
+        end
+        task.wait(3)
+    end
 end)
 
 -- ===================================================

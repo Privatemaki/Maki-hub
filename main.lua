@@ -687,8 +687,9 @@ task.spawn(function()
         end)
     end
 end)
+
 -- ===================================================
--- AUTO RECONNECT SYSTEM
+-- ULTIMATE AUTO RECONNECT & ANTI-STUCK SYSTEM
 -- ===================================================
 getgenv().AutoReconnect = true
 
@@ -698,7 +699,7 @@ task.spawn(function()
     local LocalPlayer = Players.LocalPlayer
     local CoreGui = game:GetService("CoreGui")
 
-    -- Abangan kung lumabas ang Roblox error prompt o disconnect dialog
+    -- 1. Abangan ang Error prompt o disconnect dialog sa CoreGui
     pcall(function()
         CoreGui.ChildAdded:Connect(function(child)
             if getgenv().AutoReconnect and (child.Name == "RobloxPromptGui" or child.Name == "ErrorPrompt" or child.Name:find("Disconnect")) then
@@ -708,7 +709,53 @@ task.spawn(function()
         end)
     end)
 
-    -- Fallback loop para sa network disconnection
+    -- 2. Detector para sa Error Code 277 text sa screen
+    task.spawn(function()
+        while true do
+            if getgenv().AutoReconnect then
+                pcall(function()
+                    for _, gui in ipairs(CoreGui:GetDescendants()) do
+                        if gui:IsA("TextLabel") and (gui.Text:find("Error Code: 277") or gui.Text:find("Please check your internet")) then
+                            task.wait(1)
+                            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                        end
+                    end
+                end)
+            end
+            task.wait(1)
+        end
+    end)
+
+    -- 3. Detector para sa nag-stock sa VS / Loading screen (higit sa 35 segundo)
+    task.spawn(function()
+        local lastActiveTick = tick()
+        local lastFloorVal = -1
+        
+        while true do
+            if getgenv().AutoReconnect then
+                pcall(function()
+                    local currentPlot = LocalPlayer:GetAttribute("Plot")
+                    local liveFloor = 0
+                    if currentPlot ~= nil then
+                        local arena = workspace:FindFirstChild("Arenas") and workspace.Arenas:FindFirstChild("Arena" + tostring(currentPlot))
+                        if arena then liveFloor = tonumber(arena:GetAttribute("TowerFloor")) or 0 end
+                    end
+                    
+                    if liveFloor == lastFloorVal then
+                        if tick() - lastActiveTick > 35 then
+                            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                        end
+                    else
+                        lastFloorVal = liveFloor
+                        lastActiveTick = tick()
+                    end
+                end)
+            end
+            task.wait(5)
+        end
+    end)
+
+    -- 4. Fallback network connection check
     while true do
         if getgenv().AutoReconnect then
             pcall(function()

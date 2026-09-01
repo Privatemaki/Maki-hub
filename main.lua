@@ -689,7 +689,7 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- ULTIMATE AUTO RECONNECT & ANTI-STUCK SYSTEM
+-- ULTIMATE AUTO RECONNECT & ANTI-STUCK SYSTEM (v2)
 -- ===================================================
 getgenv().AutoReconnect = true
 
@@ -709,13 +709,13 @@ task.spawn(function()
         end)
     end)
 
-    -- 2. Detector para sa Error Code 277 text sa screen
+    -- 2. Detector para sa Error Code 277, 769, at internet error text sa screen
     task.spawn(function()
         while true do
             if getgenv().AutoReconnect then
                 pcall(function()
                     for _, gui in ipairs(CoreGui:GetDescendants()) do
-                        if gui:IsA("TextLabel") and (gui.Text:find("Error Code: 277") or gui.Text:find("Please check your internet")) then
+                        if gui:IsA("TextLabel") and (gui.Text:find("Error Code: 277") or gui.Text:find("Error Code: 769") or gui.Text:find("Please check your internet")) then
                             task.wait(1)
                             TeleportService:Teleport(game.PlaceId, LocalPlayer)
                         end
@@ -737,7 +737,7 @@ task.spawn(function()
                     local currentPlot = LocalPlayer:GetAttribute("Plot")
                     local liveFloor = 0
                     if currentPlot ~= nil then
-                        local arena = workspace:FindFirstChild("Arenas") and workspace.Arenas:FindFirstChild("Arena" + tostring(currentPlot))
+                        local arena = workspace:FindFirstChild("Arenas") and workspace.Arenas:FindFirstChild("Arena" .. tostring(currentPlot))
                         if arena then liveFloor = tonumber(arena:GetAttribute("TowerFloor")) or 0 end
                     end
                     

@@ -689,6 +689,39 @@ task.spawn(function()
 end)
 
 -- ===================================================
+-- PURE INF YIELD STYLE AUTO REJOIN (NO COREGUI)
+-- ===================================================
+getgenv().AutoReconnect = true
+
+task.spawn(function()
+    local TeleportService = game:GetService("TeleportService")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+
+    -- 1. TeleportInitFailed error handler (Core ng Inf Yield style)
+    TeleportService.TeleportInitFailed:Connect(function(player, result, errorMessage)
+        if getgenv().AutoReconnect and player == LocalPlayer then
+            task.wait(2)
+            pcall(function()
+                TeleportService:Teleport(game.PlaceId, LocalPlayer)
+            end)
+        end
+    end)
+
+    -- 2. Direct player status safety check (Kapag tuluyang nawala sa server)
+    while true do
+        if getgenv().AutoReconnect then
+            pcall(function()
+                if not LocalPlayer:IsDescendantOf(Players) then
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                end
+            end)
+        end
+        task.wait(3)
+    end
+end)
+
+-- ===================================================
 -- SETTINGS TAB
 -- ===================================================
 local SettingsLeft = Tabs.Settings:AddLeftGroupbox("Menu & Config Management", "settings")

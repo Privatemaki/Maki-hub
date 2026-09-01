@@ -689,7 +689,7 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- ULTIMATE AUTO RECONNECT & ANTI-STUCK SYSTEM (v2)
+-- ULTIMATE FAST AUTO RECONNECT (v4)
 -- ===================================================
 getgenv().AutoReconnect = true
 
@@ -699,63 +699,28 @@ task.spawn(function()
     local LocalPlayer = Players.LocalPlayer
     local CoreGui = game:GetService("CoreGui")
 
-    -- 1. Abangan ang Error prompt o disconnect dialog sa CoreGui
-    pcall(function()
-        CoreGui.ChildAdded:Connect(function(child)
-            if getgenv().AutoReconnect and (child.Name == "RobloxPromptGui" or child.Name == "ErrorPrompt" or child.Name:find("Disconnect")) then
-                task.wait(1)
-                TeleportService:Teleport(game.PlaceId, LocalPlayer)
-            end
-        end)
-    end)
-
-    -- 2. Detector para sa Error Code 277, 769, at internet error text sa screen
+    -- 1. Agresibong panggagaling sa GuiService error handler o CoreGui popup
     task.spawn(function()
         while true do
             if getgenv().AutoReconnect then
                 pcall(function()
-                    for _, gui in ipairs(CoreGui:GetDescendants()) do
-                        if gui:IsA("TextLabel") and (gui.Text:find("Error Code: 277") or gui.Text:find("Error Code: 769") or gui.Text:find("Please check your internet")) then
-                            task.wait(1)
-                            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                    -- Hanapin agad kung may lumitaw na error prompt sa CoreGui
+                    for _, child in ipairs(CoreGui:GetDescendants()) do
+                        if child:IsA("TextLabel") then
+                            local t = child.Text or ""
+                            if t:find("769") or t:find("277") or t:find("Disconnected") or t:find("Reconnect") then
+                                task.wait(0.5)
+                                TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                            end
                         end
                     end
                 end)
             end
-            task.wait(1)
+            task.wait(0.5) -- Mas mabilis na check (kada kalahating segundo)
         end
     end)
 
-    -- 3. Detector para sa nag-stock sa VS / Loading screen (higit sa 35 segundo)
-    task.spawn(function()
-        local lastActiveTick = tick()
-        local lastFloorVal = -1
-        
-        while true do
-            if getgenv().AutoReconnect then
-                pcall(function()
-                    local currentPlot = LocalPlayer:GetAttribute("Plot")
-                    local liveFloor = 0
-                    if currentPlot ~= nil then
-                        local arena = workspace:FindFirstChild("Arenas") and workspace.Arenas:FindFirstChild("Arena" .. tostring(currentPlot))
-                        if arena then liveFloor = tonumber(arena:GetAttribute("TowerFloor")) or 0 end
-                    end
-                    
-                    if liveFloor == lastFloorVal then
-                        if tick() - lastActiveTick > 35 then
-                            TeleportService:Teleport(game.PlaceId, LocalPlayer)
-                        end
-                    else
-                        lastFloorVal = liveFloor
-                        lastActiveTick = tick()
-                    end
-                end)
-            end
-            task.wait(5)
-        end
-    end)
-
-    -- 4. Fallback network connection check
+    -- 2. Fallback kung sakaling mawala sa Player list ang LocalPlayer
     while true do
         if getgenv().AutoReconnect then
             pcall(function()
@@ -764,7 +729,7 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(3)
+        task.wait(2)
     end
 end)
 

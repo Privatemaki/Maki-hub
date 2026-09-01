@@ -689,7 +689,7 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- ULTIMATE FAST AUTO RECONNECT (v4)
+-- FINAL CLEAN AUTO RECONNECT (NO FALSE HOP)
 -- ===================================================
 getgenv().AutoReconnect = true
 
@@ -699,28 +699,26 @@ task.spawn(function()
     local LocalPlayer = Players.LocalPlayer
     local CoreGui = game:GetService("CoreGui")
 
-    -- 1. Agresibong panggagaling sa GuiService error handler o CoreGui popup
-    task.spawn(function()
-        while true do
-            if getgenv().AutoReconnect then
+    -- Hintayin ang mismong ErrorPrompt ng Roblox na may kasamang Error Code 277 o 769
+    pcall(function()
+        CoreGui.ChildAdded:Connect(function(child)
+            if getgenv().AutoReconnect and child.Name == "RobloxPromptGui" then
+                task.wait(2) -- Bigyan ng konting oras para mag-load ang text sa loob ng prompt
                 pcall(function()
-                    -- Hanapin agad kung may lumitaw na error prompt sa CoreGui
-                    for _, child in ipairs(CoreGui:GetDescendants()) do
-                        if child:IsA("TextLabel") then
-                            local t = child.Text or ""
-                            if t:find("769") or t:find("277") or t:find("Disconnected") or t:find("Reconnect") then
-                                task.wait(0.5)
+                    for _, desc in ipairs(child:GetDescendants()) do
+                        if desc:IsA("TextLabel") then
+                            local txt = desc.Text or ""
+                            if txt:find("277") or txt:find("769") then
                                 TeleportService:Teleport(game.PlaceId, LocalPlayer)
                             end
                         end
                     end
                 end)
             end
-            task.wait(0.5) -- Mas mabilis na check (kada kalahating segundo)
-        end
+        end)
     end)
 
-    -- 2. Fallback kung sakaling mawala sa Player list ang LocalPlayer
+    -- True disconnect check (kung sakaling tuluyang natanggal sa Player list)
     while true do
         if getgenv().AutoReconnect then
             pcall(function()
@@ -729,7 +727,7 @@ task.spawn(function()
                 end
             end)
         end
-        task.wait(2)
+        task.wait(5)
     end
 end)
 

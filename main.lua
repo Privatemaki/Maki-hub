@@ -689,13 +689,13 @@ task.spawn(function()
 end)
 
 -- ===================================================
--- MAKIHUB AUTO RECONNECT (INF YIELD STYLE)
+-- INFINITE YIELD EXACT AUTOREJ COMMAND/LISTENER
 -- ===================================================
 getgenv().AutoReconnect = true
 
 task.spawn(function()
-    local TeleportService = game:GetService("TeleportService")
     local GuiService = game:GetService("GuiService")
+    local TeleportService = game:GetService("TeleportService")
     local Players = game:GetService("Players")
     local LocalPlayer = Players.LocalPlayer
 
@@ -703,16 +703,13 @@ task.spawn(function()
         if getgenv().AutoReconnect then
             local err = GuiService:GetErrorMessage()
             if err ~= "" then
-                -- Hihinto muna habang nawalan ng net o may error
-                repeat
-                    task.wait(1)
-                    err = GuiService:GetErrorMessage()
-                until err == "" or not getgenv().AutoReconnect
-                
-                -- Kapag bumalik na ang net at nawala ang error, rejoin agad
                 task.wait(1)
                 pcall(function()
-                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                    if #Players:GetPlayers() <= 1 then
+                        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                    else
+                        TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+                    end
                 end)
             end
         end

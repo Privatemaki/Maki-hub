@@ -687,6 +687,39 @@ task.spawn(function()
         end)
     end
 end)
+-- ===================================================
+-- AUTO RECONNECT SYSTEM
+-- ===================================================
+getgenv().AutoReconnect = true
+
+task.spawn(function()
+    local TeleportService = game:GetService("TeleportService")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local CoreGui = game:GetService("CoreGui")
+
+    -- Abangan kung lumabas ang Roblox error prompt o disconnect dialog
+    pcall(function()
+        CoreGui.ChildAdded:Connect(function(child)
+            if getgenv().AutoReconnect and (child.Name == "RobloxPromptGui" or child.Name == "ErrorPrompt" or child.Name:find("Disconnect")) then
+                task.wait(1)
+                TeleportService:Teleport(game.PlaceId, LocalPlayer)
+            end
+        end)
+    end)
+
+    -- Fallback loop para sa network disconnection
+    while true do
+        if getgenv().AutoReconnect then
+            pcall(function()
+                if not LocalPlayer:IsDescendantOf(Players) then
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                end
+            end)
+        end
+        task.wait(3)
+    end
+end)
 
 -- ===================================================
 -- SETTINGS TAB
